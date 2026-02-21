@@ -1,0 +1,387 @@
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { useQuery } from '@tanstack/react-query'
+import {
+    Sparkles,
+    TrendingUp,
+    Target,
+    Calendar,
+    Heart,
+    Zap,
+    Award,
+    Clock,
+    ArrowRight,
+    Plus,
+    Play,
+    MessageCircle,
+    ClipboardList,
+    Bot,
+    Flame,
+    Activity
+} from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+
+// Fix import paths - remove the '../' and use absolute paths from src
+import Navbar from '/src/components/layout/Navbar.jsx'
+import LoadingSpinner from '/src/components/ui/LoadingSpinner.jsx'
+import CharityImpactCard from '/src/components/CharityImpactCard.jsx'
+import BackgroundImage from '/src/components/layout/BackgroundImage.jsx'
+
+import { userApi } from '/src/services/api.js'
+import { useAuthStore } from '/src/stores/authStore.js'
+import { toast } from 'react-hot-toast'
+
+// ... rest of the component code remains the same
+
+const Dashboard = () => {
+    const navigate = useNavigate()
+    const { user, token } = useAuthStore()
+    const [greeting, setGreeting] = useState('')
+
+    // Fetch user profile
+    const { data: profile, isLoading: profileLoading } = useQuery({
+        queryKey: ['userProfile'],
+        queryFn: async () => {
+            const response = await userApi.getProfile()
+            return response.data
+        },
+        enabled: !!token
+    })
+
+    // Fetch active workout plan
+    const { data: workoutPlan, isLoading: planLoading } = useQuery({
+        queryKey: ['activeWorkout'],
+        queryFn: async () => {
+            const response = await userApi.getActiveWorkout()
+            return response.data
+        },
+        enabled: !!token
+    })
+
+    // Fetch progress stats
+    const { data: stats, isLoading: statsLoading } = useQuery({
+        queryKey: ['progressStats'],
+        queryFn: async () => {
+            const response = await userApi.getProgressStats()
+            return response.data
+        },
+        enabled: !!token
+    })
+
+    // Fetch upcoming workouts
+    const { data: upcomingWorkouts, isLoading: upcomingLoading } = useQuery({
+        queryKey: ['upcomingWorkouts'],
+        queryFn: async () => {
+            const response = await userApi.getUpcomingWorkouts()
+            return response.data
+        },
+        enabled: !!token
+    })
+
+    // Set greeting based on time of day
+    useEffect(() => {
+        const hour = new Date().getHours()
+        if (hour < 12) setGreeting('Good morning')
+        else if (hour < 18) setGreeting('Good afternoon')
+        else setGreeting('Good evening')
+    }, [])
+
+    // Animation variants
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    }
+
+    const itemVariants = {
+        hidden: { y: 20, opacity: 0 },
+        visible: {
+            y: 0,
+            opacity: 1,
+            transition: {
+                type: 'spring',
+                stiffness: 100
+            }
+        }
+    }
+
+    if (profileLoading || planLoading || statsLoading || upcomingLoading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
+                <LoadingSpinner size="lg" />
+            </div>
+        )
+    }
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+            <BackgroundImage />
+            <Navbar />
+
+            <main className="container mx-auto px-4 py-8">
+                {/* Header with Greeting */}
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-8"
+                >
+                    <h1 className="text-4xl font-bold text-gray-800">
+                        {greeting}, {profile?.full_name || user?.full_name || 'Fitness Warrior'}! 👋
+                    </h1>
+                    <p className="text-gray-600 mt-2">
+                        Ready to crush your fitness goals today?
+                    </p>
+                </motion.div>
+
+                {/* Quick Stats Grid */}
+                <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+                >
+                    {/* Streak Card */}
+                    <motion.div
+                        variants={itemVariants}
+                        whileHover={{ scale: 1.05 }}
+                        className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-orange-500"
+                    >
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-gray-500 text-sm">Current Streak</p>
+                                <p className="text-3xl font-bold text-gray-800">{stats?.current_streak || 0} days</p>
+                            </div>
+                            <div className="bg-orange-100 p-3 rounded-full">
+                                <Flame className="w-6 h-6 text-orange-500" />
+                            </div>
+                        </div>
+                        <p className="text-green-600 text-sm mt-2">+2 from last week</p>
+                    </motion.div>
+
+                    {/* Calories Card */}
+                    <motion.div
+                        variants={itemVariants}
+                        whileHover={{ scale: 1.05 }}
+                        className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-green-500"
+                    >
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-gray-500 text-sm">Calories Burned</p>
+                                <p className="text-3xl font-bold text-gray-800">{stats?.total_calories_burned || 0}</p>
+                            </div>
+                            <div className="bg-green-100 p-3 rounded-full">
+                                <Zap className="w-6 h-6 text-green-500" />
+                            </div>
+                        </div>
+                        <p className="text-gray-600 text-sm mt-2">This week</p>
+                    </motion.div>
+
+                    {/* Workouts Card */}
+                    <motion.div
+                        variants={itemVariants}
+                        whileHover={{ scale: 1.05 }}
+                        className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-blue-500"
+                    >
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-gray-500 text-sm">Total Workouts</p>
+                                <p className="text-3xl font-bold text-gray-800">{stats?.total_workouts || 0}</p>
+                            </div>
+                            <div className="bg-blue-100 p-3 rounded-full">
+                                <Activity className="w-6 h-6 text-blue-500" />
+                            </div>
+                        </div>
+                        <p className="text-green-600 text-sm mt-2">{stats?.completion_rate || 0}% completion rate</p>
+                    </motion.div>
+
+                    {/* Weight Card */}
+                    <motion.div
+                        variants={itemVariants}
+                        whileHover={{ scale: 1.05 }}
+                        className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-purple-500"
+                    >
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-gray-500 text-sm">Current Weight</p>
+                                <p className="text-3xl font-bold text-gray-800">{profile?.weight || '--'} kg</p>
+                            </div>
+                            <div className="bg-purple-100 p-3 rounded-full">
+                                <Target className="w-6 h-6 text-purple-500" />
+                            </div>
+                        </div>
+                        {stats?.weight_change && (
+                            <p className={stats.weight_change < 0 ? "text-green-600 text-sm mt-2" : "text-orange-600 text-sm mt-2"}>
+                                {stats.weight_change < 0 ? '↓' : '↑'} {Math.abs(stats.weight_change)} kg from last month
+                            </p>
+                        )}
+                    </motion.div>
+                </motion.div>
+
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Left Column - Active Plan & Progress */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* Active Workout Plan */}
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="bg-white rounded-2xl shadow-lg p-6"
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                                    <ClipboardList className="w-5 h-5 text-blue-500" />
+                                    Active Workout Plan
+                                </h2>
+                                <Link
+                                    to="/workouts"
+                                    className="text-blue-500 hover:text-blue-600 flex items-center gap-1 text-sm"
+                                >
+                                    View All <ArrowRight className="w-4 h-4" />
+                                </Link>
+                            </div>
+
+                            {workoutPlan ? (
+                                <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-4">
+                                    <h3 className="font-semibold text-lg text-gray-800">{workoutPlan.title}</h3>
+                                    <p className="text-gray-600 text-sm mt-1">{workoutPlan.description}</p>
+                                    <div className="flex flex-wrap gap-4 mt-4">
+                                        <div className="flex items-center gap-1">
+                                            <Calendar className="w-4 h-4 text-gray-500" />
+                                            <span className="text-sm text-gray-600">{workoutPlan.sessions_per_week}x/week</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <Clock className="w-4 h-4 text-gray-500" />
+                                            <span className="text-sm text-gray-600">{workoutPlan.session_duration} min/session</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <Target className="w-4 h-4 text-gray-500" />
+                                            <span className="text-sm text-gray-600 capitalize">{workoutPlan.difficulty}</span>
+                                        </div>
+                                    </div>
+                                    <button className="mt-4 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
+                                        <Play className="w-4 h-4" /> Start Today's Workout
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <p className="text-gray-500 mb-4">No active workout plan</p>
+                                    <Link
+                                        to="/workouts/generate"
+                                        className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors inline-flex items-center gap-2"
+                                    >
+                                        <Plus className="w-4 h-4" /> Generate New Plan
+                                    </Link>
+                                </div>
+                            )}
+                        </motion.div>
+
+                        {/* Upcoming Workouts */}
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="bg-white rounded-2xl shadow-lg p-6"
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                                    <Calendar className="w-5 h-5 text-green-500" />
+                                    Upcoming Workouts
+                                </h2>
+                                <Link
+                                    to="/schedule"
+                                    className="text-green-500 hover:text-green-600 flex items-center gap-1 text-sm"
+                                >
+                                    View Schedule <ArrowRight className="w-4 h-4" />
+                                </Link>
+                            </div>
+
+                            <div className="space-y-3">
+                                {upcomingWorkouts && upcomingWorkouts.length > 0 ? (
+                                    upcomingWorkouts.slice(0, 3).map((workout) => (
+                                        <div
+                                            key={workout.id}
+                                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-blue-100 p-2 rounded-full">
+                                                    <Activity className="w-4 h-4 text-blue-500" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-gray-800">{workout.title}</p>
+                                                    <p className="text-sm text-gray-500">
+                                                        {workout.day} at {workout.time} • {workout.duration} min
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button className="text-blue-500 hover:text-blue-600">
+                                                <Play className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-gray-500 text-center py-4">No upcoming workouts scheduled</p>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+
+                    {/* Right Column - AROMI Coach & Charity */}
+                    <div className="space-y-6">
+                        {/* AROMI Coach Card */}
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg p-6 text-white"
+                        >
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="bg-white/20 p-3 rounded-full">
+                                    <Bot className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-semibold">AROMI AI Coach</h2>
+                                    <p className="text-sm opacity-90">Your personal fitness assistant</p>
+                                </div>
+                            </div>
+
+                            <p className="mb-4 text-sm">
+                                Ask me anything about workouts, nutrition, or staying motivated!
+                            </p>
+
+                            <div className="space-y-2 mb-4">
+                                <button className="w-full bg-white/20 hover:bg-white/30 rounded-lg p-2 text-sm transition-colors text-left flex items-center gap-2">
+                                    <MessageCircle className="w-4 h-4" /> How's my progress this week?
+                                </button>
+                                <button className="w-full bg-white/20 hover:bg-white/30 rounded-lg p-2 text-sm transition-colors text-left flex items-center gap-2">
+                                    <Heart className="w-4 h-4" /> I'm feeling tired today
+                                </button>
+                                <button className="w-full bg-white/20 hover:bg-white/30 rounded-lg p-2 text-sm transition-colors text-left flex items-center gap-2">
+                                    <Sparkles className="w-4 h-4" /> Suggest a quick workout
+                                </button>
+                            </div>
+
+                            <Link
+                                to="/aromi"
+                                className="block w-full bg-white text-purple-600 text-center py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors"
+                            >
+                                Chat with AROMI
+                            </Link>
+                        </motion.div>
+
+                        {/* Charity Impact Card */}
+                        <CharityImpactCard
+                            totalWorkouts={stats?.total_workouts || 0}
+                            streak={stats?.current_streak || 0}
+                            caloriesBurned={stats?.total_calories_burned || 0}
+                        />
+                    </div>
+                </div>
+            </main>
+        </div>
+    )
+}
+
+export default Dashboard
