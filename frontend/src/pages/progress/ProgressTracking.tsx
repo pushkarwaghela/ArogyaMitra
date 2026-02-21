@@ -1,0 +1,478 @@
+import React, { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { useQuery } from '@tanstack/react-query'
+import {
+    BarChart3,
+    TrendingUp,
+    Calendar,
+    Award,
+    Flame,
+    Target,
+    Heart,
+    Activity,
+    Weight,
+    Droplets,
+    Moon,
+    Zap,
+    Clock,
+    ChevronRight,
+    Trophy,
+    Medal,
+    Star
+} from 'lucide-react'
+import {
+    LineChart,
+    Line,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer,
+    Area,
+    AreaChart
+} from 'recharts'
+import Navbar from '../../components/layout/Navbar'
+import BackgroundImage from '../../components/layout/BackgroundImage'
+import LoadingSpinner from '../../components/ui/LoadingSpinner'
+import StatCard from '../../components/ui/StatCard'
+import { progressApi } from '../../services/api'
+import { useAuthStore } from '../../stores/authStore'
+
+interface ProgressData {
+    date: string
+    weight?: number
+    calories?: number
+    workouts?: number
+    water?: number
+    sleep?: number
+    mood?: number
+}
+
+interface Achievement {
+    id: string
+    name: string
+    description: string
+    icon: string
+    achievedAt: string
+    category: 'workout' | 'nutrition' | 'streak' | 'milestone'
+}
+
+interface BodyMetrics {
+    bmi?: number
+    bodyFatPercent?: number
+    muscleMass?: number
+    waistCircumference?: number
+    age?: number
+    gender?: string
+    height?: number
+    weight?: number
+    timestamp?: string
+}
+
+const ProgressTracking: React.FC = () => {
+    const { user } = useAuthStore()
+    const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | '3months' | 'year'>('month')
+    const [activeTab, setActiveTab] = useState<'overview' | 'workouts' | 'nutrition' | 'body' | 'achievements'>('overview')
+    const [bodyMetrics, setBodyMetrics] = useState<BodyMetrics | null>(null)
+    const [weightHistory, setWeightHistory] = useState<ProgressData[]>([])
+
+    // Fetch progress data
+    const { data: progressData, isLoading } = useQuery({
+        queryKey: ['progress', selectedPeriod],
+        queryFn: async () => {
+            const response = await progressApi.getHistory(selectedPeriod)
+            return response.data as ProgressData[]
+        }
+    })
+
+    // Fetch achievements
+    const { data: achievements, isLoading: achievementsLoading } = useQuery({
+        queryKey: ['achievements'],
+        queryFn: async () => {
+            const response = await progressApi.getAchievements()
+            return response.data as Achievement[]
+        }
+    })
+
+    // Fetch stats
+    const { data: stats, isLoading: statsLoading } = useQuery({
+        queryKey: ['progressStats'],
+        queryFn: async () => {
+            const response = await progressApi.getStats()
+            return response.data
+        }
+    })
+
+    useEffect(() => {
+        // Load body metrics from localStorage
+        const savedMetrics = localStorage.getItem('bodyMetrics')
+        if (savedMetrics) {
+            setBodyMetrics(JSON.parse(savedMetrics))
+        }
+    }, [])
+
+    if (isLoading || statsLoading || achievementsLoading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
+                <LoadingSpinner size="lg" />
+            </div>
+        )
+    }
+
+    const calculateStreak = () => {
+        if (!progressData) return 0
+        let streak = 0
+        for (let i = progressData.length - 1; i >= 0; i--) {
+            if (progressData[i].workouts && progressData[i].workouts! > 0) {
+                streak++
+            } else {
+                break
+            }
+        }
+        return streak
+    }
+
+    const calculateTotalCalories = () => {
+        return progressData?.reduce((acc, day) => acc + (day.calories || 0), 0) || 0
+    }
+
+    const calculateAverageWeight = () => {
+        const weights = progressData?.filter(d => d.weight).map(d => d.weight) || []
+        if (weights.length === 0) return 0
+        return weights.reduce((a, b) => a + b!, 0) / weights.length
+    }
+
+    const stats_data = [
+        {
+            title: 'Current Streak',
+            value: stats?.currentStreak || calculateStreak(),
+            unit: 'days',
+            icon: Flame,
+            color: 'orange',
+            change: stats?.streakChange || '+2'
+        },
+        {
+            title: 'Total Workouts',
+            value: stats?.totalWorkouts || progressData?.length || 0,
+            unit: 'sessions',
+            icon: Activity,
+            color: 'blue',
+            change: stats?.workoutChange || '+5'
+        },
+        {
+            title: 'Calories Burned',
+            value: stats?.totalCalories || calculateTotalCalories(),
+            unit: 'kcal',
+            icon: Zap,
+            color: 'green',
+            change: stats?.calorieChange || '+1200'
+        },
+        {
+            title: 'Avg Weight',
+            value: stats?.avgWeight || calculateAverageWeight().toFixed(1),
+            unit: 'kg',
+            icon: Weight,
+            color: 'purple',
+            change: stats?.weightChange || '-2.5'
+        }
+    ]
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+            <BackgroundImage />
+            <Navbar />
+
+            <main className="container mx-auto px-4 py-8">
+                {/* Header */}
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-8"
+                >
+                    <h1 className="text-4xl font-bold text-gray-800 flex items-center gap-3">
+                        <BarChart3 className="w-8 h-8 text-purple-500" />
+                        Progress Tracking
+                    </h1>
+                    <p className="text-gray-600 mt-2">
+                        Monitor your fitness journey and celebrate your achievements
+                    </p>
+                </motion.div>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    {stats_data.map((stat, index) => (
+                        <StatCard key={index} {...stat} />
+                    ))}
+                </div>
+
+                {/* Tabs */}
+                <div className="flex space-x-2 overflow-x-auto pb-2 mb-6">
+                    {['overview', 'workouts', 'nutrition', 'body', 'achievements'].map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab as any)}
+                            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${activeTab === tab
+                                    ? 'bg-purple-500 text-white'
+                                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                                }`}
+                        >
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Period Selector */}
+                <div className="flex justify-end mb-6">
+                    <select
+                        value={selectedPeriod}
+                        onChange={(e) => setSelectedPeriod(e.target.value as any)}
+                        className="px-4 py-2 bg-white border rounded-lg focus:ring-2 focus:ring-purple-500"
+                    >
+                        <option value="week">Last 7 days</option>
+                        <option value="month">Last 30 days</option>
+                        <option value="3months">Last 3 months</option>
+                        <option value="year">Last year</option>
+                    </select>
+                </div>
+
+                {/* Overview Tab */}
+                {activeTab === 'overview' && (
+                    <div className="space-y-6">
+                        {/* Weight Chart */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-white rounded-2xl shadow-lg p-6"
+                        >
+                            <h2 className="text-xl font-semibold text-gray-800 mb-4">Weight Progress</h2>
+                            <div className="h-80">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={progressData}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="date" />
+                                        <YAxis domain={['auto', 'auto']} />
+                                        <Tooltip />
+                                        <Legend />
+                                        <Line type="monotone" dataKey="weight" stroke="#8884d8" name="Weight (kg)" />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </motion.div>
+
+                        {/* Activity Overview */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="bg-white rounded-2xl shadow-lg p-6"
+                        >
+                            <h2 className="text-xl font-semibold text-gray-800 mb-4">Weekly Activity</h2>
+                            <div className="h-80">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={progressData}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="date" />
+                                        <YAxis />
+                                        <Tooltip />
+                                        <Legend />
+                                        <Bar dataKey="workouts" fill="#82ca9d" name="Workouts" />
+                                        <Bar dataKey="calories" fill="#8884d8" name="Calories (100s)" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* Workouts Tab */}
+                {activeTab === 'workouts' && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="bg-white rounded-2xl shadow-lg p-6"
+                    >
+                        <h2 className="text-xl font-semibold text-gray-800 mb-4">Workout History</h2>
+                        <div className="space-y-4">
+                            {progressData?.filter(d => d.workouts && d.workouts > 0).map((day, index) => (
+                                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                    <div>
+                                        <p className="font-medium text-gray-800">{day.date}</p>
+                                        <p className="text-sm text-gray-500">{day.workouts} workouts completed</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-green-600 font-semibold">{day.calories} kcal</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* Nutrition Tab */}
+                {activeTab === 'nutrition' && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="bg-white rounded-2xl shadow-lg p-6"
+                    >
+                        <h2 className="text-xl font-semibold text-gray-800 mb-4">Nutrition Overview</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div className="bg-blue-50 p-4 rounded-lg text-center">
+                                <Droplets className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+                                <p className="text-2xl font-bold text-blue-600">{stats?.avgWater || '2.5'}L</p>
+                                <p className="text-sm text-gray-600">Avg. Water Intake</p>
+                            </div>
+                            <div className="bg-green-50 p-4 rounded-lg text-center">
+                                <Zap className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                                <p className="text-2xl font-bold text-green-600">{stats?.avgCalories || '2100'}</p>
+                                <p className="text-sm text-gray-600">Avg. Calories</p>
+                            </div>
+                            <div className="bg-purple-50 p-4 rounded-lg text-center">
+                                <Moon className="w-8 h-8 text-purple-500 mx-auto mb-2" />
+                                <p className="text-2xl font-bold text-purple-600">{stats?.avgSleep || '7.5'}h</p>
+                                <p className="text-sm text-gray-600">Avg. Sleep</p>
+                            </div>
+                        </div>
+
+                        <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={progressData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Area type="monotone" dataKey="water" stackId="1" stroke="#3b82f6" fill="#3b82f6" />
+                                    <Area type="monotone" dataKey="sleep" stackId="2" stroke="#8b5cf6" fill="#8b5cf6" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* Body Metrics Tab */}
+                {activeTab === 'body' && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="bg-white rounded-2xl shadow-lg p-6"
+                    >
+                        <h2 className="text-xl font-semibold text-gray-800 mb-4">Body Measurements</h2>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <p className="text-sm text-gray-500">Current Weight</p>
+                                    <p className="text-3xl font-bold text-gray-800">{bodyMetrics?.weight || user?.weight || '70'} kg</p>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <p className="text-sm text-gray-500">Body Fat</p>
+                                    <p className="text-3xl font-bold text-gray-800">{bodyMetrics?.bodyFatPercent || '18'}%</p>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <p className="text-sm text-gray-500">Muscle Mass</p>
+                                    <p className="text-3xl font-bold text-gray-800">{bodyMetrics?.muscleMass || '32'} kg</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <p className="text-sm text-gray-500">BMI</p>
+                                    <p className="text-3xl font-bold text-gray-800">{bodyMetrics?.bmi?.toFixed(1) || '22.5'}</p>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <p className="text-sm text-gray-500">Waist</p>
+                                    <p className="text-3xl font-bold text-gray-800">{bodyMetrics?.waistCircumference || '82'} cm</p>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <p className="text-sm text-gray-500">Last Updated</p>
+                                    <p className="text-lg text-gray-600">{bodyMetrics?.timestamp || '2 days ago'}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => navigate('/health-assessment')}
+                            className="mt-6 w-full bg-purple-500 text-white py-3 rounded-lg hover:bg-purple-600 transition-colors"
+                        >
+                            Update Measurements
+                        </button>
+                    </motion.div>
+                )}
+
+                {/* Achievements Tab */}
+                {activeTab === 'achievements' && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="space-y-4"
+                    >
+                        <div className="bg-white rounded-2xl shadow-lg p-6">
+                            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                <Trophy className="w-6 h-6 text-yellow-500" />
+                                Recent Achievements
+                            </h2>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {achievements?.map((achievement) => (
+                                    <div
+                                        key={achievement.id}
+                                        className="flex items-center gap-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg"
+                                    >
+                                        <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center text-2xl">
+                                            {achievement.icon || '🏆'}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-gray-800">{achievement.name}</h3>
+                                            <p className="text-sm text-gray-600">{achievement.description}</p>
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                Achieved on {new Date(achievement.achievedAt).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-2xl shadow-lg p-6">
+                            <h2 className="text-xl font-semibold text-gray-800 mb-4">Next Milestones</h2>
+                            <div className="space-y-4">
+                                <div>
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span>100 Workouts</span>
+                                        <span className="text-gray-500">{stats?.totalWorkouts || 45}/100</span>
+                                    </div>
+                                    <div className="h-2 bg-gray-200 rounded-full">
+                                        <div className="h-full bg-green-500 rounded-full" style={{ width: '45%' }} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span>30-Day Streak</span>
+                                        <span className="text-gray-500">{stats?.currentStreak || 7}/30</span>
+                                    </div>
+                                    <div className="h-2 bg-gray-200 rounded-full">
+                                        <div className="h-full bg-blue-500 rounded-full" style={{ width: '23%' }} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span>10kg Weight Loss</span>
+                                        <span className="text-gray-500">{stats?.weightLoss || 2.5}/10</span>
+                                    </div>
+                                    <div className="h-2 bg-gray-200 rounded-full">
+                                        <div className="h-full bg-purple-500 rounded-full" style={{ width: '25%' }} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </main>
+        </div>
+    )
+}
+
+export default ProgressTracking

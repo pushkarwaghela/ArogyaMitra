@@ -4,48 +4,87 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import Dashboard from './pages/dashboard/Dashboard'
 import Login from './pages/auth/Login'
+import WorkoutPlans from './pages/workouts/WorkoutPlans'
+import NutritionPlans from './pages/nutrition/NutritionPlans'
+import HealthAssessment from './pages/health-assessment/HealthAssessment'
+import ProgressTracking from './pages/progress/ProgressTracking'
+import AromiCoach from './pages/aromi/AromiCoach'
 import { useAuthStore } from './stores/authStore'
 
 // Create a client
 const queryClient = new QueryClient()
 
-function App() {
+// Protected Route wrapper - Fixed for JavaScript
+const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore()
+  return isAuthenticated ? children : <Navigate to="/login" />
+}
 
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true
-        }}
-      >
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
           <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+
+            {/* Protected Routes */}
             <Route
               path="/"
               element={
-                <div className="flex flex-col items-center justify-center min-h-screen">
-                  <h1 className="text-4xl font-bold text-gray-800 mb-4">🚀 ArogyaMitra</h1>
-                  <p className="text-xl text-gray-600 mb-8">AI-Driven Workout Planning, Nutrition Guidance, and Health Coaching Platform</p>
-                  <div className="bg-white p-8 rounded-lg shadow-lg text-center">
-                    <h2 className="text-2xl font-semibold text-green-600 mb-4">Frontend Running Successfully! 🎉</h2>
-                    <p className="mb-2">Backend API: <a href="http://localhost:8000" className="text-blue-500 hover:underline">http://localhost:8000</a></p>
-                    <p>API Docs: <a href="http://localhost:8000/docs" className="text-blue-500 hover:underline">http://localhost:8000/docs</a></p>
-                    <button
-                      onClick={() => window.location.href = '/login'}
-                      className="mt-6 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-                    >
-                      Go to Login
-                    </button>
-                  </div>
-                </div>
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
               }
             />
-            <Route path="/login" element={<Login />} />
             <Route
               path="/dashboard"
-              element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />}
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/workouts"
+              element={
+                <ProtectedRoute>
+                  <WorkoutPlans />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/nutrition"
+              element={
+                <ProtectedRoute>
+                  <NutritionPlans />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/health-assessment"
+              element={
+                <ProtectedRoute>
+                  <HealthAssessment />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/progress"
+              element={
+                <ProtectedRoute>
+                  <ProgressTracking />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/aromi"
+              element={
+                <ProtectedRoute>
+                  <AromiCoach />
+                </ProtectedRoute>
+              }
             />
           </Routes>
         </div>
