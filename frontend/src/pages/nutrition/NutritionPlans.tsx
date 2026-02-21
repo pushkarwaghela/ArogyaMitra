@@ -20,7 +20,8 @@ import {
     Zap,
     Award,
     Info,
-    ChevronRight
+    ChevronRight,
+    Eye
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import Navbar from '../../components/layout/Navbar'
@@ -186,8 +187,8 @@ const NutritionPlans: React.FC = () => {
                             key={tab}
                             onClick={() => setActiveTab(tab as any)}
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === tab
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                                ? 'bg-green-500 text-white'
+                                : 'bg-white text-gray-600 hover:bg-gray-100'
                                 }`}
                         >
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -319,8 +320,8 @@ const NutritionPlans: React.FC = () => {
                                                             onClick={() => handleMealComplete(meal.id)}
                                                             disabled={completedMeals[meal.id]}
                                                             className={`text-sm flex items-center gap-1 ${completedMeals[meal.id]
-                                                                    ? 'text-green-400 cursor-not-allowed'
-                                                                    : 'text-orange-500 hover:text-orange-600'
+                                                                ? 'text-green-400 cursor-not-allowed'
+                                                                : 'text-orange-500 hover:text-orange-600'
                                                                 }`}
                                                         >
                                                             <CheckCircle className="w-4 h-4" />
