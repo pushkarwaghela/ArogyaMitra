@@ -4,7 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import engine, Base
 from app.api.v1 import router as api_router
-
+import json
+import os
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -19,10 +20,10 @@ app = FastAPI(
 )
 
 # Configure CORS
+cors_origins = os.getenv("CORS_ORIGINS", '["http://localhost:3001"]')
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3001", "http://localhost:5173", "http://127.0.0.1:3001",
-                   "https://arogyamitra-frontend.vercel.app",  "https://arogyamitra.vercel.app",],
+    allow_origins=json.loads(cors_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
