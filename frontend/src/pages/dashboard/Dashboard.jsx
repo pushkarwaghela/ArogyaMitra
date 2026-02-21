@@ -1,73 +1,64 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Link, useNavigate } from 'react-router-dom'  // Make sure this line is present
 import { useQuery } from '@tanstack/react-query'
+import { Link, useNavigate } from 'react-router-dom'
 import {
-    Sparkles,
-    TrendingUp,
-    Target,
-    Calendar,
-    Heart,
-    Zap,
-    Award,
-    Clock,
-    ArrowRight,
-    Plus,
-    Play,
-    MessageCircle,
-    ClipboardList,
-    Bot,
-    Flame,
-    Activity
+    Sparkles, TrendingUp, Target, Calendar, Heart, Zap, Award,
+    Clock, ArrowRight, Plus, Play, MessageCircle, ClipboardList,
+    Bot, Flame, Activity
 } from 'lucide-react'
-import Navbar from '../../components/layout/Navbar'        // Changed from '../components/layout/Navbar'
-import LoadingSpinner from '../../components/ui/LoadingSpinner'  // Changed from '../components/ui/LoadingSpinner'
-import CharityImpactCard from '../../components/CharityImpactCard'  // Changed from '../components/CharityImpactCard'
-import BackgroundImage from '../../components/layout/BackgroundImage'  // Changed from '../components/layout/BackgroundImage'
-import { useAuthStore, useWorkoutStore, useProgressStore } from '../../stores'  // Changed from '../stores'
+import Navbar from '../../components/layout/Navbar'
+import LoadingSpinner from '../../components/ui/LoadingSpinner'
+import CharityImpactCard from '../../components/CharityImpactCard'
+import BackgroundImage from '../../components/layout/BackgroundImage'
+import { userApi, workoutApi, progressApi } from '../../services/api'
+import { useAuthStore } from '../../stores/authStore'
 
 const Dashboard = () => {
     const navigate = useNavigate()
-    const { user } = useAuthStore()
-    const { currentPlan, fetchPlans, isLoading: workoutLoading } = useWorkoutStore()
-    const { stats, fetchStats, isLoading: progressLoading } = useProgressStore()
+    const { user, isAuthenticated } = useAuthStore()
     const [greeting, setGreeting] = useState('')
+
+    // Only fetch data if user is authenticated
+    const { data: profile, isLoading: profileLoading } = useQuery({
+        queryKey: ['profile'],
+        queryFn: async () => {
+            const response = await userApi.getProfile()
+            return response.data
+        },
+        enabled: isAuthenticated // Only run if authenticated
+    })
+
+    const { data: stats, isLoading: statsLoading } = useQuery({
+        queryKey: ['stats'],
+        queryFn: async () => {
+            const response = await progressApi.getStats()
+            return response.data
+        },
+        enabled: isAuthenticated
+    })
+
+    const { data: activeWorkout, isLoading: workoutLoading } = useQuery({
+        queryKey: ['activeWorkout'],
+        queryFn: async () => {
+            try {
+                const response = await workoutApi.getActiveWorkout()
+                return response.data
+            } catch {
+                return null
+            }
+        },
+        enabled: isAuthenticated
+    })
 
     useEffect(() => {
         const hour = new Date().getHours()
         if (hour < 12) setGreeting('Good morning')
         else if (hour < 18) setGreeting('Good afternoon')
         else setGreeting('Good evening')
+    }, [])
 
-        // Fetch data from stores
-        fetchPlans()
-        fetchStats()
-    }, [fetchPlans, fetchStats])
-
-    // Animation variants
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.1
-            }
-        }
-    }
-
-    const itemVariants = {
-        hidden: { y: 20, opacity: 0 },
-        visible: {
-            y: 0,
-            opacity: 1,
-            transition: {
-                type: 'spring',
-                stiffness: 100
-            }
-        }
-    }
-
-    if (workoutLoading || progressLoading) {
+    if (profileLoading || statsLoading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
                 <LoadingSpinner size="lg" />
@@ -75,67 +66,29 @@ const Dashboard = () => {
         )
     }
 
-    // Mock upcoming workouts
-    const upcomingWorkouts = [
-        {
-            id: 1,
-            title: 'Full Body Strength',
-            day: 'Monday',
-            time: '7:00 AM',
-            duration: 45,
-            completed: false
-        },
-        {
-            id: 2,
-            title: 'Cardio HIIT',
-            day: 'Tuesday',
-            time: '6:30 AM',
-            duration: 30,
-            completed: false
-        },
-        {
-            id: 3,
-            title: 'Upper Body Focus',
-            day: 'Wednesday',
-            time: '7:00 AM',
-            duration: 45,
-            completed: false
-        }
-    ]
-
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
             <BackgroundImage />
             <Navbar />
 
             <main className="container mx-auto px-4 py-8">
-                {/* Header with Greeting */}
+                {/* Header */}
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="mb-8"
                 >
                     <h1 className="text-4xl font-bold text-gray-800">
-                        {greeting}, {user?.full_name || 'Fitness Warrior'}! 👋
+                        {greeting}, {profile?.full_name || user?.full_name || 'Fitness Warrior'}! 👋
                     </h1>
                     <p className="text-gray-600 mt-2">
                         Ready to crush your fitness goals today?
                     </p>
                 </motion.div>
 
-                {/* Quick Stats Grid */}
-                <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-                >
-                    {/* Streak Card */}
-                    <motion.div
-                        variants={itemVariants}
-                        whileHover={{ scale: 1.05 }}
-                        className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-orange-500"
-                    >
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-orange-500">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-500 text-sm">Current Streak</p>
@@ -145,15 +98,9 @@ const Dashboard = () => {
                                 <Flame className="w-6 h-6 text-orange-500" />
                             </div>
                         </div>
-                        <p className="text-green-600 text-sm mt-2">+2 from last week</p>
-                    </motion.div>
+                    </div>
 
-                    {/* Calories Card */}
-                    <motion.div
-                        variants={itemVariants}
-                        whileHover={{ scale: 1.05 }}
-                        className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-green-500"
-                    >
+                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-green-500">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-500 text-sm">Calories Burned</p>
@@ -163,15 +110,9 @@ const Dashboard = () => {
                                 <Zap className="w-6 h-6 text-green-500" />
                             </div>
                         </div>
-                        <p className="text-gray-600 text-sm mt-2">This week</p>
-                    </motion.div>
+                    </div>
 
-                    {/* Workouts Card */}
-                    <motion.div
-                        variants={itemVariants}
-                        whileHover={{ scale: 1.05 }}
-                        className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-blue-500"
-                    >
+                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-blue-500">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-500 text-sm">Total Workouts</p>
@@ -181,184 +122,49 @@ const Dashboard = () => {
                                 <Activity className="w-6 h-6 text-blue-500" />
                             </div>
                         </div>
-                        <p className="text-green-600 text-sm mt-2">{stats?.completionRate || 0}% completion rate</p>
-                    </motion.div>
+                    </div>
 
-                    {/* Weight Card */}
-                    <motion.div
-                        variants={itemVariants}
-                        whileHover={{ scale: 1.05 }}
-                        className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-purple-500"
-                    >
+                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-purple-500">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-500 text-sm">Current Weight</p>
-                                <p className="text-3xl font-bold text-gray-800">{user?.weight || '--'} kg</p>
+                                <p className="text-3xl font-bold text-gray-800">{profile?.weight || user?.weight || '--'} kg</p>
                             </div>
                             <div className="bg-purple-100 p-3 rounded-full">
                                 <Target className="w-6 h-6 text-purple-500" />
                             </div>
                         </div>
-                        {stats?.weightChange && (
-                            <p className={stats.weightChange < 0 ? "text-green-600 text-sm mt-2" : "text-orange-600 text-sm mt-2"}>
-                                {stats.weightChange < 0 ? '↓' : '↑'} {Math.abs(stats.weightChange)} kg from last month
-                            </p>
-                        )}
-                    </motion.div>
-                </motion.div>
+                    </div>
+                </div>
 
-                {/* Main Content Grid */}
+                {/* Active Workout Plan */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Column - Active Plan & Progress */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Active Workout Plan */}
-                        <motion.div
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="bg-white rounded-2xl shadow-lg p-6"
-                        >
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                                    <ClipboardList className="w-5 h-5 text-blue-500" />
-                                    Active Workout Plan
-                                </h2>
-                                <Link
-                                    to="/workouts"
-                                    className="text-blue-500 hover:text-blue-600 flex items-center gap-1 text-sm"
-                                >
-                                    View All <ArrowRight className="w-4 h-4" />
-                                </Link>
-                            </div>
-
-                            {currentPlan ? (
-                                <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-4">
-                                    <h3 className="font-semibold text-lg text-gray-800">{currentPlan.title}</h3>
-                                    <p className="text-gray-600 text-sm mt-1">{currentPlan.description}</p>
-                                    <div className="flex flex-wrap gap-4 mt-4">
-                                        <div className="flex items-center gap-1">
-                                            <Calendar className="w-4 h-4 text-gray-500" />
-                                            <span className="text-sm text-gray-600">{currentPlan.duration} weeks</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <Clock className="w-4 h-4 text-gray-500" />
-                                            <span className="text-sm text-gray-600">{currentPlan.difficulty}</span>
-                                        </div>
-                                    </div>
-                                    <button className="mt-4 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
-                                        <Play className="w-4 h-4" /> Start Today's Workout
-                                    </button>
+                    <div className="lg:col-span-2">
+                        <div className="bg-white rounded-2xl shadow-lg p-6">
+                            <h2 className="text-xl font-semibold text-gray-800 mb-4">Active Workout Plan</h2>
+                            {activeWorkout ? (
+                                <div>
+                                    <h3 className="font-semibold text-lg text-gray-800">{activeWorkout.title}</h3>
+                                    <p className="text-gray-600 mt-2">{activeWorkout.description}</p>
                                 </div>
                             ) : (
-                                <div className="text-center py-8">
-                                    <p className="text-gray-500 mb-4">No active workout plan</p>
-                                    <Link
-                                        to="/workouts"
-                                        className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors inline-flex items-center gap-2"
-                                    >
-                                        <Plus className="w-4 h-4" /> Generate New Plan
-                                    </Link>
-                                </div>
+                                <p className="text-gray-500">No active workout plan. Generate one in the Workouts section!</p>
                             )}
-                        </motion.div>
-
-                        {/* Upcoming Workouts */}
-                        <motion.div
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="bg-white rounded-2xl shadow-lg p-6"
-                        >
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                                    <Calendar className="w-5 h-5 text-green-500" />
-                                    Upcoming Workouts
-                                </h2>
-                                <Link
-                                    to="/workouts"
-                                    className="text-green-500 hover:text-green-600 flex items-center gap-1 text-sm"
-                                >
-                                    View Schedule <ArrowRight className="w-4 h-4" />
-                                </Link>
-                            </div>
-
-                            <div className="space-y-3">
-                                {upcomingWorkouts && upcomingWorkouts.length > 0 ? (
-                                    upcomingWorkouts.slice(0, 3).map((workout) => (
-                                        <div
-                                            key={workout.id}
-                                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="bg-blue-100 p-2 rounded-full">
-                                                    <Activity className="w-4 h-4 text-blue-500" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-gray-800">{workout.title}</p>
-                                                    <p className="text-sm text-gray-500">
-                                                        {workout.day} at {workout.time} • {workout.duration} min
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <button className="text-blue-500 hover:text-blue-600">
-                                                <Play className="w-5 h-5" />
-                                            </button>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-gray-500 text-center py-4">No upcoming workouts scheduled</p>
-                                )}
-                            </div>
-                        </motion.div>
+                        </div>
                     </div>
 
-                    {/* Right Column - AROMI Coach & Charity */}
-                    <div className="space-y-6">
-                        {/* AROMI Coach Card */}
-                        <motion.div
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg p-6 text-white"
-                        >
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="bg-white/20 p-3 rounded-full">
-                                    <Bot className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-semibold">AROMI AI Coach</h2>
-                                    <p className="text-sm opacity-90">Your personal fitness assistant</p>
-                                </div>
-                            </div>
-
-                            <p className="mb-4 text-sm">
-                                Ask me anything about workouts, nutrition, or staying motivated!
-                            </p>
-
-                            <div className="space-y-2 mb-4">
-                                <button className="w-full bg-white/20 hover:bg-white/30 rounded-lg p-2 text-sm transition-colors text-left flex items-center gap-2">
-                                    <MessageCircle className="w-4 h-4" /> How's my progress this week?
-                                </button>
-                                <button className="w-full bg-white/20 hover:bg-white/30 rounded-lg p-2 text-sm transition-colors text-left flex items-center gap-2">
-                                    <Heart className="w-4 h-4" /> I'm feeling tired today
-                                </button>
-                                <button className="w-full bg-white/20 hover:bg-white/30 rounded-lg p-2 text-sm transition-colors text-left flex items-center gap-2">
-                                    <Sparkles className="w-4 h-4" /> Suggest a quick workout
-                                </button>
-                            </div>
-
+                    {/* AROMI Coach Card */}
+                    <div>
+                        <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg p-6 text-white">
+                            <h2 className="text-xl font-semibold mb-2">AROMI AI Coach</h2>
+                            <p className="text-sm opacity-90 mb-4">Ask me anything about your fitness journey!</p>
                             <Link
                                 to="/aromi"
-                                className="block w-full bg-white text-purple-600 text-center py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors"
+                                className="block w-full bg-white text-purple-600 text-center py-3 rounded-lg font-medium hover:bg-gray-100"
                             >
                                 Chat with AROMI
                             </Link>
-                        </motion.div>
-
-                        {/* Charity Impact Card */}
-                        <CharityImpactCard
-                            totalWorkouts={stats?.totalWorkouts || 0}
-                            streak={stats?.currentStreak || 0}
-                            caloriesBurned={stats?.totalCaloriesBurned || 0}
-                        />
+                        </div>
                     </div>
                 </div>
             </main>

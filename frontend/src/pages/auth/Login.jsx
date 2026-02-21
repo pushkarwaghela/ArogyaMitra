@@ -1,43 +1,44 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { LogIn, Mail, Lock } from 'lucide-react'
-
-// Fix import paths - use absolute paths
-import { authApi } from '/src/services/api.js'
-import { useAuthStore } from '/src/stores/authStore.js'
+import { useAuthStore } from '../../stores/authStore'
 import { toast } from 'react-hot-toast'
 
-// ... rest of the component code remains the same
 const Login = () => {
     const navigate = useNavigate()
-    const { login } = useAuthStore()
+    const { login, isLoading } = useAuthStore()
     const [formData, setFormData] = useState({
         username: '',
         password: ''
     })
-    const [loading, setLoading] = useState(false)
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        setLoading(true)
 
-        try {
-            const response = await authApi.login(formData.username, formData.password)
-            const { access_token, user } = response.data
+        if (!formData.username || !formData.password) {
+            toast.error('Please enter both username and password')
+            return
+        }
 
-            login(user, access_token)
+        const result = await login(formData.username, formData.password)
+
+        if (result.success) {
             toast.success('Login successful!')
             navigate('/dashboard')
-        } catch (error) {
-            toast.error(error.response?.data?.detail || 'Login failed')
-        } finally {
-            setLoading(false)
+        } else {
+            if (result.error === 'Invalid credentials') {
+                toast.error('Invalid username or password')
+            } else if (result.error?.includes('not found')) {
+                toast.error('User not found. Please register first.')
+            } else {
+                toast.error(result.error || 'Login failed')
+            }
         }
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50 px-4">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -54,7 +55,7 @@ const Login = () => {
                                 type="text"
                                 value={formData.username}
                                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                                 placeholder="Enter your username"
                                 required
                             />
@@ -69,7 +70,7 @@ const Login = () => {
                                 type="password"
                                 value={formData.password}
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                                 placeholder="Enter your password"
                                 required
                             />
@@ -78,21 +79,18 @@ const Login = () => {
 
                     <button
                         type="submit"
-                        disabled={loading}
-                        className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        disabled={isLoading}
+                        className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
                     >
-                        {loading ? 'Logging in...' : (
-                            <>
-                                <LogIn className="w-5 h-5" />
-                                Login
-                            </>
-                        )}
+                        {isLoading ? 'Logging in...' : 'Login'}
                     </button>
                 </form>
 
                 <p className="mt-6 text-center text-gray-600">
                     Don't have an account?{' '}
-                    <a href="/register" className="text-blue-500 hover:underline">Sign up</a>
+                    <Link to="/register" className="text-blue-500 hover:underline">
+                        Sign up
+                    </Link>
                 </p>
             </motion.div>
         </div>

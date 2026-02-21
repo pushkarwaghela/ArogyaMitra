@@ -1,30 +1,24 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
     Calendar,
     Clock,
     Dumbbell,
     Target,
-    ChevronRight,
     Play,
     CheckCircle,
     Flame,
     Activity,
     ArrowLeft,
-    BarChart3,
     Award,
-    Sparkles,
-    Info
+    Sparkles
 } from 'lucide-react'
-import { toast } from 'react-hot-toast'
 import Navbar from '../../components/layout/Navbar'
 import BackgroundImage from '../../components/layout/BackgroundImage'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import ExercisePlayer from './ExercisePlayer'
-
-import { useAuthStore, useWorkoutStore } from "../../stores";
+import { useAuthStore, useWorkoutStore } from "../../stores"
 
 interface Exercise {
     id: string
@@ -54,7 +48,7 @@ interface WorkoutPlan {
     id: string
     title: string
     description: string
-    duration: number // weeks
+    duration: number
     difficulty: string
     weeklySchedule: DayWorkout[]
     createdAt: string
@@ -75,14 +69,15 @@ const WorkoutPlans = () => {
         isLoading
     } = useWorkoutStore()
 
-    const [selectedDay, setSelectedDay] = useState(null)
-    const [selectedExercise, setSelectedExercise] = useState(null)
+    const [selectedDay, setSelectedDay] = useState<DayWorkout | null>(null)
+    const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
     const [activeTab, setActiveTab] = useState('overview')
     const [showPlayer, setShowPlayer] = useState(false)
+    const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>({})
 
     useEffect(() => {
         fetchPlans()
-    }, [])
+    }, [fetchPlans])
 
     const handleGeneratePlan = () => {
         generatePlan({
@@ -94,7 +89,7 @@ const WorkoutPlans = () => {
         })
     }
 
-    const handleStartExercise = (exercise, day) => {
+    const handleStartExercise = (exercise: Exercise, day: DayWorkout) => {
         setCurrentExercise(exercise)
         setActiveWorkout(day)
         setSelectedExercise(exercise)
@@ -102,12 +97,46 @@ const WorkoutPlans = () => {
         setShowPlayer(true)
     }
 
-    const handleExerciseComplete = (exerciseId) => {
+    const handleExerciseComplete = (exerciseId: string) => {
+        setCompletedExercises(prev => ({
+            ...prev,
+            [exerciseId]: true
+        }))
         completeExercise(exerciseId)
     }
 
-    const handleDayComplete = (day) => {
+    const handleDayComplete = (day: DayWorkout) => {
+        // Mark all exercises in the day as complete
+        day.exercises.forEach(ex => {
+            setCompletedExercises(prev => ({
+                ...prev,
+                [ex.id]: true
+            }))
+        })
         completeWorkout(day.dayNumber)
+    }
+    // Add this function to handle real workout generation
+    const handleGenerateWorkout = async () => {
+        try {
+            setIsLoading(true)
+            const response = await workoutApi.generatePlan({
+                fitnessLevel: user?.fitness_level || 'beginner',
+                goal: user?.fitness_goal || 'weight_loss',
+                preference: user?.workout_preference || 'moderate',
+                daysPerWeek: 5,
+                duration: 45
+            })
+
+            if (response.data.success) {
+                toast.success('Workout plan generated successfully!')
+                fetchPlans() // Refresh the list
+            }
+        } catch (error) {
+            toast.error('Failed to generate workout plan')
+            console.error(error)
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     if (isLoading) {
@@ -117,7 +146,6 @@ const WorkoutPlans = () => {
             </div>
         )
     }
-
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
@@ -145,7 +173,7 @@ const WorkoutPlans = () => {
                     {['overview', 'week', 'history'].map((tab) => (
                         <button
                             key={tab}
-                            onClick={() => setActiveTab(tab as any)}
+                            onClick={() => setActiveTab(tab)}
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === tab
                                 ? 'bg-blue-500 text-white'
                                 : 'bg-white text-gray-600 hover:bg-gray-100'
@@ -169,11 +197,11 @@ const WorkoutPlans = () => {
                         </p>
                         <button
                             onClick={handleGeneratePlan}
-                            disabled={generatePlanMutation.isPending}
+                            disabled={isLoading}
                             className="bg-blue-500 text-white px-8 py-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 mx-auto"
                         >
                             <Sparkles className="w-5 h-5" />
-                            {generatePlanMutation.isPending ? 'Generating...' : 'Generate New Plan'}
+                            {isLoading ? 'Generating...' : 'Generate New Plan'}
                         </button>
                     </motion.div>
                 ) : (
@@ -203,13 +231,13 @@ const WorkoutPlans = () => {
                                 <div className="bg-gray-50 rounded-lg p-3 text-center">
                                     <Activity className="w-5 h-5 text-green-500 mx-auto mb-1" />
                                     <p className="text-sm text-gray-500">Workouts</p>
-                                    <p className="font-semibold">{currentPlan.weeklySchedule.length}/week</p>
+                                    <p className="font-semibold">{currentPlan.weeklySchedule?.length || 0}/week</p>
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-3 text-center">
                                     <Flame className="w-5 h-5 text-orange-500 mx-auto mb-1" />
                                     <p className="text-sm text-gray-500">Calories/Week</p>
                                     <p className="font-semibold">
-                                        {currentPlan.weeklySchedule.reduce((acc, day) => acc + (day.totalCalories || 0), 0)}
+                                        {currentPlan.weeklySchedule?.reduce((acc, day) => acc + (day.totalCalories || 0), 0) || 0}
                                     </p>
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-3 text-center">
@@ -222,7 +250,7 @@ const WorkoutPlans = () => {
 
                         {/* Weekly Schedule */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {currentPlan.weeklySchedule.map((day, index) => (
+                            {currentPlan.weeklySchedule?.map((day, index) => (
                                 <motion.div
                                     key={index}
                                     initial={{ opacity: 0, y: 20 }}
@@ -241,7 +269,7 @@ const WorkoutPlans = () => {
                                         </div>
                                         {!day.isRestDay && (
                                             <p className={`text-sm mt-1 ${day.isRestDay ? 'text-gray-600' : 'text-white/90'}`}>
-                                                {day.totalDuration} min • {day.exercises.length} exercises
+                                                {day.totalDuration} min • {day.exercises?.length || 0} exercises
                                             </p>
                                         )}
                                     </div>
@@ -249,7 +277,7 @@ const WorkoutPlans = () => {
                                     {!day.isRestDay ? (
                                         <div className="p-4">
                                             <div className="space-y-2 mb-4">
-                                                {day.exercises.slice(0, 3).map((exercise, idx) => (
+                                                {day.exercises?.slice(0, 3).map((exercise, idx) => (
                                                     <div key={idx} className="flex items-center justify-between text-sm">
                                                         <span className="text-gray-600">{exercise.name}</span>
                                                         <span className="text-gray-500">
@@ -257,9 +285,9 @@ const WorkoutPlans = () => {
                                                         </span>
                                                     </div>
                                                 ))}
-                                                {day.exercises.length > 3 && (
+                                                {(day.exercises?.length || 0) > 3 && (
                                                     <p className="text-xs text-gray-400 text-center mt-2">
-                                                        +{day.exercises.length - 3} more exercises
+                                                        +{(day.exercises?.length || 0) - 3} more exercises
                                                     </p>
                                                 )}
                                             </div>
@@ -320,7 +348,7 @@ const WorkoutPlans = () => {
                                             Day {selectedDay.dayNumber}: {selectedDay.focus}
                                         </h2>
                                         <p className="text-gray-600 mt-1">
-                                            {selectedDay.totalDuration} minutes • {selectedDay.exercises.length} exercises
+                                            {selectedDay.totalDuration} minutes • {selectedDay.exercises?.length || 0} exercises
                                         </p>
                                     </div>
                                     <button
@@ -332,7 +360,7 @@ const WorkoutPlans = () => {
                                 </div>
 
                                 <div className="space-y-4">
-                                    {selectedDay.exercises.map((exercise, idx) => (
+                                    {selectedDay.exercises?.map((exercise, idx) => (
                                         <motion.div
                                             key={idx}
                                             initial={{ opacity: 0, x: -20 }}

@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
     Calendar,
-    Clock,
     ShoppingCart,
     Target,
-    ClipboardList,
     CheckCircle,
-    ExternalLink,
     Utensils,
     Sparkles,
     Coffee,
@@ -20,7 +16,6 @@ import {
     Zap,
     Award,
     Info,
-    ChevronRight,
     Eye
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
@@ -95,9 +90,6 @@ const NutritionPlans = () => {
     const [showRecipe, setShowRecipe] = useState(false)
     const [completedMeals, setCompletedMeals] = useState<Record<string, boolean>>({})
     const [groceryItems, setGroceryItems] = useState<GroceryItem[]>([])
-    const [generatePlanMutation] = useState({
-        isPending: false
-    })
 
     useEffect(() => {
         fetchPlans()
@@ -143,6 +135,29 @@ const NutritionPlans = () => {
         )
     }
 
+    // Add this function to handle real meal plan generation
+    const handleGenerateMealPlan = async () => {
+        try {
+            setIsLoading(true)
+            const response = await nutritionApi.generatePlan({
+                calorieTarget: 2000,
+                dietType: user?.diet_preference || 'vegetarian',
+                allergies: user?.allergies?.split(',') || [],
+                durationDays: 7
+            })
+
+            if (response.data.success) {
+                toast.success('Meal plan generated successfully!')
+                fetchPlans() // Refresh the list
+            }
+        } catch (error) {
+            toast.error('Failed to generate meal plan')
+            console.error(error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
     if (isLoading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
@@ -152,7 +167,7 @@ const NutritionPlans = () => {
     }
 
     const today = new Date().getDay()
-    const todayPlan = currentPlan?.dailyPlans.find(d => d.day === today)
+    const todayPlan = currentPlan?.dailyPlans?.find(d => d.day === today)
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
@@ -182,8 +197,8 @@ const NutritionPlans = () => {
                             key={tab}
                             onClick={() => setActiveTab(tab as any)}
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === tab
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                                ? 'bg-green-500 text-white'
+                                : 'bg-white text-gray-600 hover:bg-gray-100'
                                 }`}
                         >
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -204,11 +219,11 @@ const NutritionPlans = () => {
                         </p>
                         <button
                             onClick={handleGeneratePlan}
-                            disabled={generatePlanMutation.isPending}
+                            disabled={isLoading}
                             className="bg-green-500 text-white px-8 py-3 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 mx-auto"
                         >
                             <Sparkles className="w-5 h-5" />
-                            {generatePlanMutation.isPending ? 'Generating...' : 'Generate Meal Plan'}
+                            {isLoading ? 'Generating...' : 'Generate Meal Plan'}
                         </button>
                     </motion.div>
                 ) : (
@@ -257,7 +272,7 @@ const NutritionPlans = () => {
 
                                 {/* Meals */}
                                 <div className="space-y-4">
-                                    {todayPlan.meals.map((meal, index) => (
+                                    {todayPlan.meals?.map((meal, index) => (
                                         <motion.div
                                             key={meal.id}
                                             initial={{ opacity: 0, y: 20 }}
@@ -315,8 +330,8 @@ const NutritionPlans = () => {
                                                             onClick={() => handleMealComplete(meal.id)}
                                                             disabled={completedMeals[meal.id]}
                                                             className={`text-sm flex items-center gap-1 ${completedMeals[meal.id]
-                                                                    ? 'text-green-400 cursor-not-allowed'
-                                                                    : 'text-orange-500 hover:text-orange-600'
+                                                                ? 'text-green-400 cursor-not-allowed'
+                                                                : 'text-orange-500 hover:text-orange-600'
                                                                 }`}
                                                         >
                                                             <CheckCircle className="w-4 h-4" />
@@ -334,7 +349,7 @@ const NutritionPlans = () => {
                         {/* Weekly View */}
                         {activeTab === 'week' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                {currentPlan.dailyPlans.map((day, index) => (
+                                {currentPlan.dailyPlans?.map((day, index) => (
                                     <motion.div
                                         key={index}
                                         initial={{ opacity: 0, y: 20 }}
@@ -348,7 +363,7 @@ const NutritionPlans = () => {
                                         </div>
                                         <div className="p-4">
                                             <div className="space-y-2 mb-4">
-                                                {day.meals.map((meal, idx) => (
+                                                {day.meals?.map((meal, idx) => (
                                                     <div key={idx} className="flex justify-between text-sm">
                                                         <span className="text-gray-600 capitalize">{meal.type}</span>
                                                         <span className="text-gray-500">{meal.calories} cal</span>

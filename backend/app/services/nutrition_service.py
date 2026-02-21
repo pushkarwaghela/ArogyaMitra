@@ -3,11 +3,12 @@ from sqlalchemy.orm import Session
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 import json
+import logging
 
 from app.models.user import User
 from app.models.nutrition import NutritionPlan, Meal, DailyMealPlan, DailyMealInstance, MealType, CuisineType
 from app.services.ai_agent import arogya_mitra_agent
-import logging
+from app.services.spoonacular_service import spoonacular_service
 
 logger = logging.getLogger(__name__)
 

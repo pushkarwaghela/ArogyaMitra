@@ -23,12 +23,16 @@ print(f"🌐 CORS Origins configured: {cors_origins}")  # This will show in Rend
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001", 
+        "http://localhost:5173",
+        "https://arogya-mitra-omega.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # Include all API routers
 app.include_router(api_router)
 

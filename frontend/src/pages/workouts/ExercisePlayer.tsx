@@ -219,6 +219,33 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({
         return `${mins}:${secs.toString().padStart(2, '0')}`
     }
 
+    // Add this to load real YouTube videos
+    useEffect(() => {
+        const loadVideo = async () => {
+            try {
+                if (exercise.video_url) {
+                    setVideoUrl(exercise.video_url)
+                } else {
+                    // Fetch video from YouTube API
+                    const response = await youtubeApi.searchExercise(
+                        exercise.name,
+                        'workout',
+                        'beginner'
+                    )
+                    if (response.data?.videos?.length > 0) {
+                        setVideoUrl(response.data.videos[0].embed_url)
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load video:', error)
+            } finally {
+                setLoadingVideo(false)
+            }
+        }
+
+        loadVideo()
+    }, [exercise])
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -305,8 +332,8 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({
                                     <button
                                         onClick={() => setCameraActive(!cameraActive)}
                                         className={`p-3 rounded-full ${cameraActive
-                                                ? 'bg-red-500 text-white'
-                                                : 'bg-gray-700 text-gray-300'
+                                            ? 'bg-red-500 text-white'
+                                            : 'bg-gray-700 text-gray-300'
                                             } hover:scale-110 transition-transform`}
                                     >
                                         {cameraActive ? <CameraOff className="w-5 h-5" /> : <Camera className="w-5 h-5" />}

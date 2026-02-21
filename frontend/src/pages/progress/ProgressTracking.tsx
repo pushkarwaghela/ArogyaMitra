@@ -115,6 +115,14 @@ const ProgressTracking: React.FC = () => {
 
     const isLoading = progressLoading || statsLoading || achievementsLoading
 
+    const { data: history } = useQuery({
+        queryKey: ['progressHistory', selectedPeriod],
+        queryFn: async () => {
+            const response = await progressApi.getHistory(selectedPeriod)
+            return response.data
+        }
+    })
+
     if (isLoading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
@@ -216,8 +224,8 @@ const ProgressTracking: React.FC = () => {
                             key={tab}
                             onClick={() => setActiveTab(tab as any)}
                             className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${activeTab === tab
-                                    ? 'bg-purple-500 text-white'
-                                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                                ? 'bg-purple-500 text-white'
+                                : 'bg-white text-gray-600 hover:bg-gray-100'
                                 }`}
                         >
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}

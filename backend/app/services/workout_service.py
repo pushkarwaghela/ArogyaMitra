@@ -3,11 +3,10 @@ from sqlalchemy.orm import Session
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 import json
-
+import logging
 from app.models.user import User
 from app.models.workout import WorkoutPlan, Exercise, WeeklySchedule, ExerciseInstance, DifficultyLevel, WorkoutType
 from app.services.ai_agent import arogya_mitra_agent
-import logging
 
 logger = logging.getLogger(__name__)
 
