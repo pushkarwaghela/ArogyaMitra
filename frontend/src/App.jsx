@@ -1,4 +1,4 @@
-﻿import React from 'react'
+﻿import React, { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
@@ -8,19 +8,21 @@ import WorkoutPlans from './pages/workouts/WorkoutPlans'
 import NutritionPlans from './pages/nutrition/NutritionPlans'
 import HealthAssessment from './pages/health-assessment/HealthAssessment'
 import ProgressTracking from './pages/progress/ProgressTracking'
-import AromiCoach from './pages/aromi/AromiCoach'
+import AromiCoach from './pages/aromi/AromiCoach'  // Add this import
 import { useAuthStore } from './stores/authStore'
 
 // Create a client
 const queryClient = new QueryClient()
 
-// Protected Route wrapper - Fixed for JavaScript
+// Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore()
   return isAuthenticated ? children : <Navigate to="/login" />
 }
 
 function App() {
+  const { isAuthenticated } = useAuthStore()
+
   return (
     <QueryClientProvider client={queryClient}>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -78,6 +80,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            {/* Add this missing route */}
             <Route
               path="/aromi"
               element={
@@ -87,6 +90,8 @@ function App() {
               }
             />
           </Routes>
+
+          {/* AROMI Coach Floating Button - This will be handled by the AromiCoach component itself */}
         </div>
       </Router>
       <Toaster position="top-right" />

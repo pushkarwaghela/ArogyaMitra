@@ -38,8 +38,9 @@ import Navbar from '../../components/layout/Navbar'
 import BackgroundImage from '../../components/layout/BackgroundImage'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import StatCard from '../../components/ui/StatCard'
-import { progressApi } from '../../services/api'
-import { useAuthStore } from '../../stores/authStore'
+
+import { useAuthStore, useProgressStore } from '../stores'
+
 
 interface ProgressData {
     date: string
@@ -72,51 +73,44 @@ interface BodyMetrics {
     timestamp?: string
 }
 
-const ProgressTracking: React.FC = () => {
-    const { user } = useAuthStore()
-    const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | '3months' | 'year'>('month')
-    const [activeTab, setActiveTab] = useState<'overview' | 'workouts' | 'nutrition' | 'body' | 'achievements'>('overview')
-    const [bodyMetrics, setBodyMetrics] = useState<BodyMetrics | null>(null)
+const ProgressTracking = () => {
+  const { user } = useAuthStore()
+  const { 
+    stats, 
+    history, 
+    achievements, 
+    bodyMetrics,
+    fetchStats, 
+    fetchHistory, 
+    fetchAchievements,
+    isLoading 
+  } = useProgressStore()
+  
+  const [selectedPeriod, setSelectedPeriod] = useState('month')
+  const [activeTab, setActiveTab] = useState('overview')
 
-    // Fetch progress data
-    const { data: progressData, isLoading: progressLoading } = useQuery({
-        queryKey: ['progress', selectedPeriod],
-        queryFn: async () => {
-            const response = await progressApi.getHistory(selectedPeriod)
-            return response.data as ProgressData[]
-        }
-    })
+  useEffect(() => {
+    fetchStats()
+    fetchHistory(selectedPeriod)
+    fetchAchievements()
+  }, [selectedPeriod])
 
-    // Fetch achievements
-    const { data: achievements, isLoading: achievementsLoading } = useQuery({
-        queryKey: ['achievements'],
-        queryFn: async () => {
-            const response = await progressApi.getAchievements()
-            return response.data as Achievement[]
-        }
-    })
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
 
-    // Fetch stats
-    const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['progressStats'],
-        queryFn: async () => {
-            const response = await progressApi.getStats()
-            return response.data
-        }
-    })
+  return (return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
 
-    useEffect(() => {
-        // Load body metrics from localStorage
-        const savedMetrics = localStorage.getItem('bodyMetrics')
-        if (savedMetrics) {
-            setBodyMetrics(JSON.parse(savedMetrics))
-        }
-    }, [])
-
-    const isLoading = progressLoading || statsLoading || achievementsLoading
-
-    if (isLoading) {
-        return (
+  return (return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
                 <LoadingSpinner size="lg" />
             </div>
@@ -152,7 +146,7 @@ const ProgressTracking: React.FC = () => {
             value: stats?.currentStreak || calculateStreak(),
             unit: 'days',
             icon: Flame,
-            color: 'orange' as const,
+            color: 'orange',
             change: stats?.streakChange || '+2'
         },
         {
@@ -160,7 +154,7 @@ const ProgressTracking: React.FC = () => {
             value: stats?.totalWorkouts || progressData?.length || 0,
             unit: 'sessions',
             icon: Activity,
-            color: 'blue' as const,
+            color: 'blue',
             change: stats?.workoutChange || '+5'
         },
         {
@@ -168,7 +162,7 @@ const ProgressTracking: React.FC = () => {
             value: stats?.totalCalories || calculateTotalCalories(),
             unit: 'kcal',
             icon: Zap,
-            color: 'green' as const,
+            color: 'green',
             change: stats?.calorieChange || '+1200'
         },
         {
@@ -176,7 +170,7 @@ const ProgressTracking: React.FC = () => {
             value: stats?.avgWeight || calculateAverageWeight().toFixed(1),
             unit: 'kg',
             icon: Weight,
-            color: 'purple' as const,
+            color: 'purple',
             change: stats?.weightChange || '-2.5'
         }
     ]
@@ -337,6 +331,19 @@ const ProgressTracking: React.FC = () => {
                                 <p className="text-sm text-gray-600">Avg. Sleep</p>
                             </div>
                         </div>
+
+                        <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={progressData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Area type="monotone" dataKey="water" stackId="1" stroke="#3b82f6" fill="#3b82f6" />
+                                    <Area type="monotone" dataKey="sleep" stackId="2" stroke="#8b5cf6" fill="#8b5cf6" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
                     </motion.div>
                 )}
 
@@ -380,6 +387,13 @@ const ProgressTracking: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+
+                        <button
+                            onClick={() => navigate('/health-assessment')}
+                            className="mt-6 w-full bg-purple-500 text-white py-3 rounded-lg hover:bg-purple-600 transition-colors"
+                        >
+                            Update Measurements
+                        </button>
                     </motion.div>
                 )}
 

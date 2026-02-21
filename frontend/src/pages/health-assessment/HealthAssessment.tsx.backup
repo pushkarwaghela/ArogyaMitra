@@ -23,7 +23,7 @@ import { toast } from 'react-hot-toast'
 import Navbar from '../../components/layout/Navbar'
 import BackgroundImage from '../../components/layout/BackgroundImage'
 
-import { useAuthStore, useProgressStore } from '../../stores'
+import { useAuthStore, useProgressStore } from '../stores'
 
 
 interface Question {
@@ -70,53 +70,53 @@ interface HealthAssessmentData {
 }
 
 const HealthAssessment = () => {
-    const navigate = useNavigate()
-    const { user, updateUser } = useAuthStore()
-    const { updateBodyMetrics } = useProgressStore()
-    const [currentStep, setCurrentStep] = useState(0)
-    const [answers, setAnswers] = useState({})
-    const [bodyMetrics, setBodyMetrics] = useState({
-        age: user?.age || 30,
-        gender: user?.gender || 'male',
-        height: user?.height || 170,
-        weight: user?.weight || 70,
-        bmi: 0
+  const navigate = useNavigate()
+  const { user, updateUser } = useAuthStore()
+  const { updateBodyMetrics } = useProgressStore()
+  const [currentStep, setCurrentStep] = useState(0)
+  const [answers, setAnswers] = useState({})
+  const [bodyMetrics, setBodyMetrics] = useState({
+    age: user?.age || 30,
+    gender: user?.gender || 'male',
+    height: user?.height || 170,
+    weight: user?.weight || 70,
+    bmi: 0
+  })
+
+  // Calculate BMI
+  useEffect(() => {
+    const heightInM = bodyMetrics.height / 100
+    const bmi = bodyMetrics.weight / (heightInM * heightInM)
+    setBodyMetrics(prev => ({ ...prev, bmi: parseFloat(bmi.toFixed(1)) }))
+  }, [bodyMetrics.height, bodyMetrics.weight])
+
+  const handleSubmit = () => {
+    // Update user data in auth store
+    updateUser({
+      age: bodyMetrics.age,
+      gender: bodyMetrics.gender,
+      height: bodyMetrics.height,
+      weight: bodyMetrics.weight,
+      fitness_level: answers.fitness_level?.toLowerCase() || 'beginner',
+      fitness_goal: answers.fitness_goal || 'weight_loss',
+      workout_preference: answers.workout_preference || 'moderate',
+      diet_preference: answers.diet_type || 'vegetarian'
     })
+    
+    // Update body metrics in progress store
+    updateBodyMetrics({
+      age: bodyMetrics.age,
+      gender: bodyMetrics.gender,
+      height: bodyMetrics.height,
+      weight: bodyMetrics.weight,
+      bmi: bodyMetrics.bmi
+    })
+    
+    toast.success('Health assessment completed!')
+    navigate('/dashboard')
+  }
 
-    // Calculate BMI
-    useEffect(() => {
-        const heightInM = bodyMetrics.height / 100
-        const bmi = bodyMetrics.weight / (heightInM * heightInM)
-        setBodyMetrics(prev => ({ ...prev, bmi: parseFloat(bmi.toFixed(1)) }))
-    }, [bodyMetrics.height, bodyMetrics.weight])
-
-    const handleSubmit = () => {
-        // Update user data in auth store
-        updateUser({
-            age: bodyMetrics.age,
-            gender: bodyMetrics.gender,
-            height: bodyMetrics.height,
-            weight: bodyMetrics.weight,
-            fitness_level: answers.fitness_level?.toLowerCase() || 'beginner',
-            fitness_goal: answers.fitness_goal || 'weight_loss',
-            workout_preference: answers.workout_preference || 'moderate',
-            diet_preference: answers.diet_type || 'vegetarian'
-        })
-
-        // Update body metrics in progress store
-        updateBodyMetrics({
-            age: bodyMetrics.age,
-            gender: bodyMetrics.gender,
-            height: bodyMetrics.height,
-            weight: bodyMetrics.weight,
-            bmi: bodyMetrics.bmi
-        })
-
-        toast.success('Health assessment completed!')
-        navigate('/dashboard')
-    }
-
-    return (
+  return (return (return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
             <BackgroundImage />
             <Navbar />
@@ -277,8 +277,8 @@ const HealthAssessment = () => {
                                     <button
                                         onClick={() => handleAnswer(currentQuestion.id, 'yes')}
                                         className={`flex-1 py-3 rounded-lg border-2 transition-colors ${answers[currentQuestion.id] === 'yes'
-                                            ? 'border-green-500 bg-green-50 text-green-700'
-                                            : 'border-gray-200 hover:border-gray-300'
+                                                ? 'border-green-500 bg-green-50 text-green-700'
+                                                : 'border-gray-200 hover:border-gray-300'
                                             }`}
                                     >
                                         Yes
@@ -286,8 +286,8 @@ const HealthAssessment = () => {
                                     <button
                                         onClick={() => handleAnswer(currentQuestion.id, 'no')}
                                         className={`flex-1 py-3 rounded-lg border-2 transition-colors ${answers[currentQuestion.id] === 'no'
-                                            ? 'border-red-500 bg-red-50 text-red-700'
-                                            : 'border-gray-200 hover:border-gray-300'
+                                                ? 'border-red-500 bg-red-50 text-red-700'
+                                                : 'border-gray-200 hover:border-gray-300'
                                             }`}
                                     >
                                         No
