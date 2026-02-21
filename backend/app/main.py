@@ -10,20 +10,20 @@ import os
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-# Create FastAPI app
-app = FastAPI(
-    title="ArogyaMitra API",
-    description="AI-Driven Workout Planning, Nutrition Guidance, and Health Coaching Platform",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
-)
+app = FastAPI()
 
-# Configure CORS
-cors_origins = os.getenv("CORS_ORIGINS", '["http://localhost:3001"]')
+# Get CORS origins from environment variable
+cors_origins_str = os.getenv("CORS_ORIGINS", '["http://localhost:3001"]')
+try:
+    cors_origins = json.loads(cors_origins_str)
+except:
+    cors_origins = ["http://localhost:3001"]
+
+print(f"🌐 CORS Origins configured: {cors_origins}")  # This will show in Render logs
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=json.loads(cors_origins),
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
