@@ -59,9 +59,12 @@ export const useAuthStore = create<AuthState>()(
                 set({ isLoading: true, error: null })
                 try {
                     const response = await authApi.login(username, password)
-                    const { access_token, user } = response.data
+                    const { access_token, refresh_token, user } = response.data
 
                     localStorage.setItem('token', access_token)
+                    if (refresh_token) {
+                        localStorage.setItem('refresh_token', refresh_token)
+                    }
 
                     set({
                         user,
@@ -98,6 +101,7 @@ export const useAuthStore = create<AuthState>()(
 
             logout: () => {
                 localStorage.removeItem('token')
+                localStorage.removeItem('refresh_token')
                 set({
                     user: null,
                     token: null,

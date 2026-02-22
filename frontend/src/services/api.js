@@ -9,6 +9,21 @@ const api = axios.create({
   },
 })
 
+// Track if a refresh is already in progress
+let isRefreshing = false
+let failedQueue = []
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error)
+    } else {
+      prom.resolve(token)
+    }
+  })
+  failedQueue = []
+}
+
 // Add token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
@@ -18,26 +33,80 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle errors properly - no mock fallbacks
+// Handle responses and token refresh
 api.interceptors.response.use(
   response => response,
-  error => {
-    console.error('API Error:', error.response?.status, error.config?.url)
-    return Promise.reject(error)
+  async error => {
+    const originalRequest = error.config
+
+    // If error is not 403 or request already retried, reject
+    if (error.response?.status !== 403 || originalRequest._retry) {
+      return Promise.reject(error)
+    }
+
+    // If token refresh is in progress, queue this request
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject })
+      })
+        .then(token => {
+          originalRequest.headers.Authorization = `Bearer ${token}`
+          return api(originalRequest)
+        })
+        .catch(err => Promise.reject(err))
+    }
+
+    originalRequest._retry = true
+    isRefreshing = true
+
+    try {
+      // Try to refresh the token
+      const refreshToken = localStorage.getItem('refresh_token')
+      if (!refreshToken) {
+        throw new Error('No refresh token')
+      }
+
+      const response = await api.post('/auth/refresh', { refresh_token: refreshToken })
+      const { access_token } = response.data
+
+      // Update token in localStorage
+      localStorage.setItem('token', access_token)
+
+      // Update Authorization header
+      api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
+
+      // Process queued requests
+      processQueue(null, access_token)
+
+      // Retry original request
+      originalRequest.headers.Authorization = `Bearer ${access_token}`
+      return api(originalRequest)
+    } catch (refreshError) {
+      // Refresh failed - clear tokens and redirect to login
+      processQueue(refreshError, null)
+      localStorage.removeItem('token')
+      localStorage.removeItem('refresh_token')
+
+      // Redirect to login page
+      window.location.href = '/login'
+
+      return Promise.reject(refreshError)
+    } finally {
+      isRefreshing = false
+    }
   }
 )
 
 // Auth APIs
 export const authApi = {
   login: (username, password) => {
-    // Make sure we're sending the exact format the backend expects
     const loginData = { username, password }
-    console.log('Sending login data:', loginData) // Debug log
+    console.log('Sending login data:', loginData)
     return api.post('/auth/login/json', loginData)
   },
 
   register: (userData) => {
-    console.log('Sending register data:', userData) // Debug log
+    console.log('Sending register data:', userData)
     return api.post('/auth/register', userData)
   },
 
