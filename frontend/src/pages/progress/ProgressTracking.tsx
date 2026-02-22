@@ -115,14 +115,6 @@ const ProgressTracking: React.FC = () => {
 
     const isLoading = progressLoading || statsLoading || achievementsLoading
 
-    const { data: history } = useQuery({
-        queryKey: ['progressHistory', selectedPeriod],
-        queryFn: async () => {
-            const response = await progressApi.getHistory(selectedPeriod)
-            return response.data
-        }
-    })
-
     if (isLoading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">

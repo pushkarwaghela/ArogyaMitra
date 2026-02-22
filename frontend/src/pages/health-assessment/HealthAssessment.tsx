@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
 import {
     Heart,
     Activity,
@@ -22,9 +21,8 @@ import {
 import { toast } from 'react-hot-toast'
 import Navbar from '../../components/layout/Navbar'
 import BackgroundImage from '../../components/layout/BackgroundImage'
-
 import { useAuthStore, useProgressStore } from '../../stores'
-
+import { healthApi } from '../../services/api'
 
 interface Question {
     id: string
@@ -36,37 +34,11 @@ interface Question {
     required?: boolean
 }
 
-interface HealthAssessmentData {
-    // Personal Info
-    age: number
-    gender: string
-    height: number
-    weight: number
-
-    // Medical History
-    medicalConditions: string[]
-    injuries: string[]
-    medications: string[]
-    allergies: string[]
-
-    // Lifestyle
-    sleepHours: number
-    stressLevel: number
-    waterIntake: number
-    smoking: boolean
-    alcohol: boolean
-
-    // Fitness
-    fitnessLevel: 'beginner' | 'intermediate' | 'advanced'
-    workoutFrequency: number
-    preferredWorkoutTime: 'morning' | 'afternoon' | 'evening'
-    previousExperience: string
-
-    // Dietary
-    dietType: string
-    foodAllergies: string[]
-    mealPrepTime: number
-    cookingSkill: 'beginner' | 'intermediate' | 'advanced'
+interface Category {
+    id: string
+    label: string
+    icon: any
+    color: string
 }
 
 const HealthAssessment = () => {
@@ -74,7 +46,8 @@ const HealthAssessment = () => {
     const { user, updateUser } = useAuthStore()
     const { updateBodyMetrics } = useProgressStore()
     const [currentStep, setCurrentStep] = useState(0)
-    const [answers, setAnswers] = useState({})
+    const [answers, setAnswers] = useState<Record<string, any>>({})
+    const [isSubmitting, setIsSubmitting] = useState(false)
     const [bodyMetrics, setBodyMetrics] = useState({
         age: user?.age || 30,
         gender: user?.gender || 'male',
@@ -83,6 +56,147 @@ const HealthAssessment = () => {
         bmi: 0
     })
 
+    const categories: Category[] = [
+        { id: 'medical', label: 'Medical History', icon: Heart, color: 'red' },
+        { id: 'lifestyle', label: 'Lifestyle', icon: Activity, color: 'blue' },
+        { id: 'fitness', label: 'Fitness', icon: Brain, color: 'green' },
+        { id: 'dietary', label: 'Dietary', icon: Droplets, color: 'purple' }
+    ]
+
+    const questions: Question[] = [
+        // Medical History
+        {
+            id: 'medical_conditions',
+            text: 'Do you have any existing medical conditions?',
+            type: 'multiselect',
+            options: ['None', 'High Blood Pressure', 'Diabetes', 'Heart Disease', 'Asthma', 'Arthritis', 'Thyroid Issues', 'Other'],
+            category: 'medical'
+        },
+        {
+            id: 'injuries',
+            text: 'Do you have any current or past injuries?',
+            type: 'multiselect',
+            options: ['None', 'Back Pain', 'Knee Injury', 'Shoulder Injury', 'Ankle Sprain', 'Muscle Strain', 'Joint Pain', 'Other'],
+            category: 'medical'
+        },
+        {
+            id: 'medications',
+            text: 'Are you taking any medications?',
+            type: 'multiselect',
+            options: ['None', 'Blood Pressure Meds', 'Diabetes Meds', 'Pain Relievers', 'Antidepressants', 'Allergy Meds', 'Other'],
+            category: 'medical'
+        },
+        {
+            id: 'allergies',
+            text: 'Do you have any allergies?',
+            type: 'multiselect',
+            options: ['None', 'Peanuts', 'Tree Nuts', 'Dairy', 'Eggs', 'Gluten', 'Shellfish', 'Soy', 'Other'],
+            category: 'medical'
+        },
+
+        // Lifestyle
+        {
+            id: 'sleep_hours',
+            text: 'How many hours of sleep do you typically get?',
+            type: 'select',
+            options: ['Less than 5', '5-6 hours', '7-8 hours', '9+ hours'],
+            category: 'lifestyle'
+        },
+        {
+            id: 'stress_level',
+            text: 'How would you rate your stress level?',
+            type: 'select',
+            options: ['Very Low', 'Low', 'Moderate', 'High', 'Very High'],
+            category: 'lifestyle'
+        },
+        {
+            id: 'water_intake',
+            text: 'How many glasses of water do you drink daily?',
+            type: 'select',
+            options: ['Less than 3', '3-5 glasses', '6-8 glasses', '8+ glasses'],
+            category: 'lifestyle'
+        },
+        {
+            id: 'smoking',
+            text: 'Do you smoke?',
+            type: 'yesno',
+            category: 'lifestyle'
+        },
+        {
+            id: 'alcohol',
+            text: 'Do you consume alcohol?',
+            type: 'yesno',
+            category: 'lifestyle'
+        },
+
+        // Fitness
+        {
+            id: 'fitness_level',
+            text: 'How would you describe your current fitness level?',
+            type: 'select',
+            options: ['Beginner', 'Intermediate', 'Advanced'],
+            category: 'fitness'
+        },
+        {
+            id: 'workout_frequency',
+            text: 'How many days per week can you workout?',
+            type: 'select',
+            options: ['1-2 days', '3-4 days', '5-6 days', 'Daily'],
+            category: 'fitness'
+        },
+        {
+            id: 'workout_time',
+            text: 'What time of day do you prefer to workout?',
+            type: 'select',
+            options: ['Morning', 'Afternoon', 'Evening'],
+            category: 'fitness'
+        },
+        {
+            id: 'fitness_goal',
+            text: 'What is your primary fitness goal?',
+            type: 'select',
+            options: ['Weight Loss', 'Muscle Gain', 'Maintenance', 'Endurance', 'Flexibility'],
+            category: 'fitness'
+        },
+        {
+            id: 'workout_preference',
+            text: 'What type of workouts do you prefer?',
+            type: 'select',
+            options: ['Moderate', 'High Intensity', 'Low Intensity', 'Yoga', 'Cardio'],
+            category: 'fitness'
+        },
+
+        // Dietary
+        {
+            id: 'diet_type',
+            text: 'What type of diet do you follow?',
+            type: 'select',
+            options: ['Vegetarian', 'Vegan', 'Non-Vegetarian', 'Keto', 'Paleo', 'Mediterranean', 'None'],
+            category: 'dietary'
+        },
+        {
+            id: 'food_allergies',
+            text: 'Do you have any food allergies?',
+            type: 'multiselect',
+            options: ['None', 'Peanuts', 'Tree Nuts', 'Dairy', 'Eggs', 'Gluten', 'Shellfish', 'Soy'],
+            category: 'dietary'
+        },
+        {
+            id: 'meal_prep_time',
+            text: 'How much time can you spend on meal prep?',
+            type: 'select',
+            options: ['Less than 30 mins', '30-60 mins', '1-2 hours', '2+ hours'],
+            category: 'dietary'
+        },
+        {
+            id: 'cooking_skill',
+            text: 'How would you rate your cooking skills?',
+            type: 'select',
+            options: ['Beginner', 'Intermediate', 'Advanced'],
+            category: 'dietary'
+        }
+    ]
+
     // Calculate BMI
     useEffect(() => {
         const heightInM = bodyMetrics.height / 100
@@ -90,7 +204,31 @@ const HealthAssessment = () => {
         setBodyMetrics(prev => ({ ...prev, bmi: parseFloat(bmi.toFixed(1)) }))
     }, [bodyMetrics.height, bodyMetrics.weight])
 
-    const handleSubmit = () => {
+    const currentQuestion = questions[currentStep]
+    const currentCategory = categories.find(c => c.id === currentQuestion?.category)
+    const progress = ((currentStep + 1) / questions.length) * 100
+
+    const handleAnswer = (questionId: string, value: any) => {
+        setAnswers(prev => ({ ...prev, [questionId]: value }))
+    }
+
+    const handleNext = () => {
+        if (currentStep < questions.length - 1) {
+            setCurrentStep(prev => prev + 1)
+        } else {
+            handleSubmit()
+        }
+    }
+
+    const handlePrevious = () => {
+        if (currentStep > 0) {
+            setCurrentStep(prev => prev - 1)
+        }
+    }
+
+    const handleSubmit = async () => {
+        setIsSubmitting(true)
+
         // Update user data in auth store
         updateUser({
             age: bodyMetrics.age,
@@ -98,9 +236,13 @@ const HealthAssessment = () => {
             height: bodyMetrics.height,
             weight: bodyMetrics.weight,
             fitness_level: answers.fitness_level?.toLowerCase() || 'beginner',
-            fitness_goal: answers.fitness_goal || 'weight_loss',
-            workout_preference: answers.workout_preference || 'moderate',
-            diet_preference: answers.diet_type || 'vegetarian'
+            fitness_goal: answers.fitness_goal?.toLowerCase().replace(' ', '_') || 'weight_loss',
+            workout_preference: answers.workout_preference?.toLowerCase().replace(' ', '_') || 'moderate',
+            diet_preference: answers.diet_type?.toLowerCase().replace(' ', '_') || 'vegetarian',
+            allergies: answers.allergies?.filter((a: string) => a !== 'None').join(', ') || '',
+            medical_conditions: answers.medical_conditions?.filter((a: string) => a !== 'None').join(', ') || '',
+            injuries: answers.injuries?.filter((a: string) => a !== 'None').join(', ') || '',
+            medications: answers.medications?.filter((a: string) => a !== 'None').join(', ') || ''
         })
 
         // Update body metrics in progress store
@@ -112,8 +254,19 @@ const HealthAssessment = () => {
             bmi: bodyMetrics.bmi
         })
 
-        toast.success('Health assessment completed!')
-        navigate('/dashboard')
+        // Submit to backend
+        try {
+            await healthApi.submitAssessment({
+                ...answers,
+                ...bodyMetrics
+            })
+            toast.success('Health assessment completed!')
+            navigate('/dashboard')
+        } catch (error) {
+            toast.error('Failed to save assessment')
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     return (
@@ -277,8 +430,8 @@ const HealthAssessment = () => {
                                     <button
                                         onClick={() => handleAnswer(currentQuestion.id, 'yes')}
                                         className={`flex-1 py-3 rounded-lg border-2 transition-colors ${answers[currentQuestion.id] === 'yes'
-                                            ? 'border-green-500 bg-green-50 text-green-700'
-                                            : 'border-gray-200 hover:border-gray-300'
+                                                ? 'border-green-500 bg-green-50 text-green-700'
+                                                : 'border-gray-200 hover:border-gray-300'
                                             }`}
                                     >
                                         Yes
@@ -286,8 +439,8 @@ const HealthAssessment = () => {
                                     <button
                                         onClick={() => handleAnswer(currentQuestion.id, 'no')}
                                         className={`flex-1 py-3 rounded-lg border-2 transition-colors ${answers[currentQuestion.id] === 'no'
-                                            ? 'border-red-500 bg-red-50 text-red-700'
-                                            : 'border-gray-200 hover:border-gray-300'
+                                                ? 'border-red-500 bg-red-50 text-red-700'
+                                                : 'border-gray-200 hover:border-gray-300'
                                             }`}
                                     >
                                         No
@@ -328,11 +481,11 @@ const HealthAssessment = () => {
                             </button>
                             <button
                                 onClick={handleNext}
-                                disabled={submitAssessmentMutation.isPending}
+                                disabled={isSubmitting}
                                 className="px-6 py-2 bg-gradient-to-r from-blue-500 to-green-500 text-white rounded-lg hover:from-blue-600 hover:to-green-600 disabled:opacity-50 flex items-center gap-2"
                             >
                                 {currentStep === questions.length - 1 ? (
-                                    submitAssessmentMutation.isPending ? (
+                                    isSubmitting ? (
                                         <>
                                             <Loader2 className="w-4 h-4 animate-spin" />
                                             Submitting...
