@@ -9,7 +9,8 @@ import {
     User,
     LogOut,
     Menu,
-    X
+    X,
+    HeartPulse // Add this for Health Assessment
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuthStore } from '../../stores/authStore'
@@ -30,6 +31,7 @@ const Navbar = () => {
         { path: '/dashboard', icon: Home, label: 'Dashboard' },
         { path: '/workouts', icon: Dumbbell, label: 'Workouts' },
         { path: '/nutrition', icon: Utensils, label: 'Nutrition' },
+        { path: '/health-assessment', icon: HeartPulse, label: 'Health Assessment' }, // ADD THIS
         { path: '/progress', icon: BarChart3, label: 'Progress' },
         { path: '/aromi', icon: MessageCircle, label: 'AROMI' },
     ]
