@@ -82,6 +82,9 @@ class User(Base):
     nutrition_plans = relationship("NutritionPlan", back_populates="user", cascade="all, delete-orphan")
     progress_records = relationship("ProgressRecord", back_populates="user", cascade="all, delete-orphan")
     chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
+
+    # Add this relationship if not already present
+    health_assessments = relationship("HealthAssessment", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User {self.username}>"

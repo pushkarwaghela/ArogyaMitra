@@ -1,6 +1,7 @@
 # backend/app/api/v1/__init__.py
 """API v1 package"""
 from fastapi import APIRouter
+from .endpoints import auth, users, workouts, nutrition, progress, analytics, aromi, youtube, calendar, health
 
 # Create the router
 router = APIRouter(prefix="/api/v1")
@@ -31,7 +32,6 @@ router.include_router(ai_test.router)  # Add this line
 router.include_router(youtube.router)
 router.include_router(nutrition_api.router)
 router.include_router(calendar.router)
-
-
+router.include_router(health.router)  # Add this line
 
 __all__ = ["router"]
