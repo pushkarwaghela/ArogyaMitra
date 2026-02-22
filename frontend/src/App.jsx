@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
@@ -25,10 +25,9 @@ const LoadingScreen = () => (
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoading, isHydrated } = useAuthStore()
+  const { isAuthenticated, isLoading } = useAuthStore()
 
-  // Wait for hydration to complete
-  if (!isHydrated || isLoading) {
+  if (isLoading) {
     return <LoadingScreen />
   }
 
@@ -36,7 +35,7 @@ const ProtectedRoute = ({ children }) => {
 }
 
 function App() {
-  const { checkAuth, isHydrated } = useAuthStore()
+  const { checkAuth, isLoading } = useAuthStore()
   const [initialCheckDone, setInitialCheckDone] = useState(false)
 
   useEffect(() => {
@@ -48,8 +47,7 @@ function App() {
     verifyAuth()
   }, [checkAuth])
 
-  // Don't render anything until initial check is done and store is hydrated
-  if (!initialCheckDone || !isHydrated) {
+  if (!initialCheckDone || isLoading) {
     return <LoadingScreen />
   }
 

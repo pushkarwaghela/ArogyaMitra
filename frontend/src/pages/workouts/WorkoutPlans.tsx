@@ -12,13 +12,19 @@ import {
     Activity,
     ArrowLeft,
     Award,
-    Sparkles
+    Sparkles,
+    RefreshCw,
+    Video,
+    Info,
+    ChevronRight
 } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 import Navbar from '../../components/layout/Navbar'
 import BackgroundImage from '../../components/layout/BackgroundImage'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import ExercisePlayer from './ExercisePlayer'
 import { useAuthStore, useWorkoutStore } from "../../stores"
+import { workoutApi } from '../../services/api'
 
 interface Exercise {
     id: string
@@ -28,6 +34,7 @@ interface Exercise {
     duration?: number
     restTime: number
     videoUrl?: string
+    videoTitle?: string
     muscleGroup: string
     difficulty: string
     caloriesBurn: number
@@ -66,7 +73,7 @@ const WorkoutPlans = () => {
         setCurrentExercise,
         completeExercise,
         completeWorkout,
-        isLoading
+        isLoading: storeLoading
     } = useWorkoutStore()
 
     const [selectedDay, setSelectedDay] = useState<DayWorkout | null>(null)
@@ -74,19 +81,42 @@ const WorkoutPlans = () => {
     const [activeTab, setActiveTab] = useState('overview')
     const [showPlayer, setShowPlayer] = useState(false)
     const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>({})
+    const [generating, setGenerating] = useState(false)
+    const [preferences, setPreferences] = useState({
+        fitnessLevel: user?.fitness_level || 'beginner',
+        goal: user?.fitness_goal || 'weight_loss',
+        preference: user?.workout_preference || 'moderate',
+        daysPerWeek: 5,
+        duration: 45
+    })
+    const [showPreferences, setShowPreferences] = useState(false)
+    const [loadingDetails, setLoadingDetails] = useState(false)
 
     useEffect(() => {
         fetchPlans()
     }, [fetchPlans])
 
     const handleGeneratePlan = () => {
-        generatePlan({
-            fitnessLevel: user?.fitness_level || 'beginner',
-            goal: user?.fitness_goal || 'weight_loss',
-            preference: user?.workout_preference || 'moderate',
-            daysPerWeek: 5,
-            duration: 45
-        })
+        setShowPreferences(true)
+    }
+
+    const handleGenerateWithPreferences = async () => {
+        setGenerating(true)
+        setShowPreferences(false)
+
+        try {
+            const response = await workoutApi.generatePlan(preferences)
+
+            if (response.data.success) {
+                toast.success('🎉 New workout plan generated successfully!')
+                fetchPlans() // Refresh the list
+            }
+        } catch (error) {
+            console.error('Generation error:', error)
+            toast.error('Failed to generate workout plan. Please try again.')
+        } finally {
+            setGenerating(false)
+        }
     }
 
     const handleStartExercise = (exercise: Exercise, day: DayWorkout) => {
@@ -103,10 +133,10 @@ const WorkoutPlans = () => {
             [exerciseId]: true
         }))
         completeExercise(exerciseId)
+        toast.success('Exercise completed! 🎯')
     }
 
     const handleDayComplete = (day: DayWorkout) => {
-        // Mark all exercises in the day as complete
         day.exercises.forEach(ex => {
             setCompletedExercises(prev => ({
                 ...prev,
@@ -114,35 +144,24 @@ const WorkoutPlans = () => {
             }))
         })
         completeWorkout(day.dayNumber)
-    }
-    // Add this function to handle real workout generation
-    const handleGenerateWorkout = async () => {
-        try {
-            setIsLoading(true)
-            const response = await workoutApi.generatePlan({
-                fitnessLevel: user?.fitness_level || 'beginner',
-                goal: user?.fitness_goal || 'weight_loss',
-                preference: user?.workout_preference || 'moderate',
-                daysPerWeek: 5,
-                duration: 45
-            })
-
-            if (response.data.success) {
-                toast.success('Workout plan generated successfully!')
-                fetchPlans() // Refresh the list
-            }
-        } catch (error) {
-            toast.error('Failed to generate workout plan')
-            console.error(error)
-        } finally {
-            setIsLoading(false)
-        }
+        toast.success(`Day ${day.dayNumber} completed! Great job! 💪`)
     }
 
-    if (isLoading) {
+    const handleViewPlan = async (plan: WorkoutPlan) => {
+        setLoadingDetails(true)
+        await fetchPlanDetails(plan.id)
+        setLoadingDetails(false)
+    }
+
+    if (storeLoading || generating) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
-                <LoadingSpinner size="lg" />
+                <div className="text-center">
+                    <LoadingSpinner size="lg" />
+                    {generating && (
+                        <p className="mt-4 text-gray-600">AI is creating your personalized workout plan...</p>
+                    )}
+                </div>
             </div>
         )
     }
@@ -153,20 +172,152 @@ const WorkoutPlans = () => {
             <Navbar />
 
             <main className="container mx-auto px-4 py-8">
-                {/* Header */}
+                {/* Header with Generate Button */}
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mb-8"
+                    className="mb-8 flex justify-between items-center"
                 >
-                    <h1 className="text-4xl font-bold text-gray-800 flex items-center gap-3">
-                        <Dumbbell className="w-8 h-8 text-blue-500" />
-                        Workout Plans
-                    </h1>
-                    <p className="text-gray-600 mt-2">
-                        AI-powered workout routines personalized for your goals
-                    </p>
+                    <div>
+                        <h1 className="text-4xl font-bold text-gray-800 flex items-center gap-3">
+                            <Dumbbell className="w-8 h-8 text-blue-500" />
+                            Workout Plans
+                        </h1>
+                        <p className="text-gray-600 mt-2">
+                            AI-powered workout routines personalized for your goals
+                        </p>
+                    </div>
+                    <button
+                        onClick={handleGeneratePlan}
+                        className="bg-gradient-to-r from-blue-500 to-green-500 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-green-600 transition-all flex items-center gap-2 shadow-lg"
+                    >
+                        <Sparkles className="w-5 h-5" />
+                        Generate New Plan
+                    </button>
                 </motion.div>
+
+                {/* Preferences Modal */}
+                <AnimatePresence>
+                    {showPreferences && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                            onClick={() => setShowPreferences(false)}
+                        >
+                            <motion.div
+                                initial={{ scale: 0.9, y: 20 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.9, y: 20 }}
+                                className="bg-white rounded-2xl max-w-md w-full p-6"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <h2 className="text-2xl font-bold text-gray-800 mb-4">Workout Preferences</h2>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Fitness Level
+                                        </label>
+                                        <select
+                                            value={preferences.fitnessLevel}
+                                            onChange={(e) => setPreferences({ ...preferences, fitnessLevel: e.target.value })}
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="beginner">Beginner</option>
+                                            <option value="intermediate">Intermediate</option>
+                                            <option value="advanced">Advanced</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Fitness Goal
+                                        </label>
+                                        <select
+                                            value={preferences.goal}
+                                            onChange={(e) => setPreferences({ ...preferences, goal: e.target.value })}
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="weight_loss">Weight Loss</option>
+                                            <option value="muscle_gain">Muscle Gain</option>
+                                            <option value="maintenance">Maintenance</option>
+                                            <option value="endurance">Endurance</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Workout Preference
+                                        </label>
+                                        <select
+                                            value={preferences.preference}
+                                            onChange={(e) => setPreferences({ ...preferences, preference: e.target.value })}
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="moderate">Moderate</option>
+                                            <option value="high_intensity">High Intensity</option>
+                                            <option value="low_intensity">Low Intensity</option>
+                                            <option value="yoga">Yoga</option>
+                                            <option value="cardio">Cardio</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Days per Week
+                                        </label>
+                                        <input
+                                            type="range"
+                                            min="3"
+                                            max="7"
+                                            value={preferences.daysPerWeek}
+                                            onChange={(e) => setPreferences({ ...preferences, daysPerWeek: parseInt(e.target.value) })}
+                                            className="w-full"
+                                        />
+                                        <div className="text-center text-sm text-gray-600 mt-1">
+                                            {preferences.daysPerWeek} days/week
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Workout Duration (minutes)
+                                        </label>
+                                        <input
+                                            type="range"
+                                            min="20"
+                                            max="90"
+                                            step="5"
+                                            value={preferences.duration}
+                                            onChange={(e) => setPreferences({ ...preferences, duration: parseInt(e.target.value) })}
+                                            className="w-full"
+                                        />
+                                        <div className="text-center text-sm text-gray-600 mt-1">
+                                            {preferences.duration} minutes
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 mt-6">
+                                    <button
+                                        onClick={() => setShowPreferences(false)}
+                                        className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleGenerateWithPreferences}
+                                        className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+                                    >
+                                        Generate Plan
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Tabs */}
                 <div className="flex space-x-4 mb-6">
@@ -193,16 +344,8 @@ const WorkoutPlans = () => {
                         <Dumbbell className="w-16 h-16 text-blue-300 mx-auto mb-4" />
                         <h2 className="text-2xl font-bold text-gray-800 mb-2">No Active Workout Plan</h2>
                         <p className="text-gray-600 mb-6">
-                            Let's create a personalized workout plan tailored to your fitness goals
+                            Click the "Generate New Plan" button above to create your personalized AI workout plan
                         </p>
-                        <button
-                            onClick={handleGeneratePlan}
-                            disabled={isLoading}
-                            className="bg-blue-500 text-white px-8 py-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 mx-auto"
-                        >
-                            <Sparkles className="w-5 h-5" />
-                            {isLoading ? 'Generating...' : 'Generate New Plan'}
-                        </button>
                     </motion.div>
                 ) : (
                     <>
@@ -243,7 +386,7 @@ const WorkoutPlans = () => {
                                 <div className="bg-gray-50 rounded-lg p-3 text-center">
                                     <Target className="w-5 h-5 text-purple-500 mx-auto mb-1" />
                                     <p className="text-sm text-gray-500">Focus</p>
-                                    <p className="font-semibold">Full Body</p>
+                                    <p className="font-semibold capitalize">{currentPlan.weeklySchedule?.[0]?.focus || 'Full Body'}</p>
                                 </div>
                             </div>
                         </motion.div>
@@ -297,7 +440,7 @@ const WorkoutPlans = () => {
                                                 className="w-full bg-blue-50 text-blue-600 py-2 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
                                             >
                                                 <Play className="w-4 h-4" />
-                                                Start Workout
+                                                View Workout
                                             </button>
                                         </div>
                                     ) : (
@@ -384,6 +527,11 @@ const WorkoutPlans = () => {
                                                     </p>
                                                     <p className="text-xs text-gray-500 mt-1">
                                                         {exercise.muscleGroup} • 🔥 {exercise.caloriesBurn} cal
+                                                        {exercise.videoUrl && (
+                                                            <span className="ml-2 text-blue-500 flex items-center gap-1">
+                                                                <Video className="w-3 h-3" /> Video available
+                                                            </span>
+                                                        )}
                                                     </p>
                                                 </div>
                                                 <button

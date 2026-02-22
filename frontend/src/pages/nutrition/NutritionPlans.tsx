@@ -16,13 +16,17 @@ import {
     Zap,
     Award,
     Info,
-    Eye
+    Eye,
+    RefreshCw,
+    ChefHat,
+    ListChecks
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import Navbar from '../../components/layout/Navbar'
 import BackgroundImage from '../../components/layout/BackgroundImage'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import { useAuthStore, useNutritionStore } from '../../stores'
+import { nutritionApi } from '../../services/api'
 
 interface Meal {
     id: string
@@ -81,7 +85,7 @@ const NutritionPlans = () => {
         setCurrentDay,
         completeMeal,
         addToGroceryList,
-        isLoading
+        isLoading: storeLoading
     } = useNutritionStore()
 
     const [activeTab, setActiveTab] = useState<'today' | 'week' | 'grocery'>('today')
@@ -90,18 +94,55 @@ const NutritionPlans = () => {
     const [showRecipe, setShowRecipe] = useState(false)
     const [completedMeals, setCompletedMeals] = useState<Record<string, boolean>>({})
     const [groceryItems, setGroceryItems] = useState<GroceryItem[]>([])
+    const [generating, setGenerating] = useState(false)
+    const [showPreferences, setShowPreferences] = useState(false)
+    const [preferences, setPreferences] = useState({
+        calorieTarget: 2000,
+        dietType: user?.diet_preference || 'vegetarian',
+        allergies: user?.allergies || '',
+        mealsPerDay: 4
+    })
 
     useEffect(() => {
         fetchPlans()
     }, [fetchPlans])
 
+    useEffect(() => {
+        if (currentPlan?.dailyPlans) {
+            console.log('Available days:', currentPlan.dailyPlans.map(d => d.day))
+        }
+    }, [currentPlan])
+
     const handleGeneratePlan = () => {
-        generatePlan({
-            calorieTarget: 2000,
-            dietType: user?.diet_preference || 'vegetarian',
-            allergies: user?.allergies?.split(',') || [],
-            duration: 7
-        })
+        setShowPreferences(true)
+    }
+
+    const handleGenerateWithPreferences = async () => {
+        setGenerating(true)
+        setShowPreferences(false)
+
+        try {
+            const response = await nutritionApi.generatePlan({
+                calorieTarget: preferences.calorieTarget,
+                dietType: preferences.dietType,
+                allergies: preferences.allergies.split(',').map(a => a.trim()).filter(a => a),
+                mealsPerDay: preferences.mealsPerDay,
+                durationDays: 7
+            })
+
+            if (response.data.success) {
+                toast.success('🎉 New meal plan generated successfully!')
+                // Wait a moment then fetch plans
+                setTimeout(() => {
+                    fetchPlans()
+                }, 500)
+            }
+        } catch (error) {
+            console.error('Generation error:', error)
+            toast.error('Failed to generate meal plan. Please try again.')
+        } finally {
+            setGenerating(false)
+        }
     }
 
     const handleMealComplete = (mealId: string) => {
@@ -110,12 +151,12 @@ const NutritionPlans = () => {
             [mealId]: true
         }))
         completeMeal(mealId)
-        toast.success('Meal logged!')
+        toast.success('Meal logged! 🍽️')
     }
 
     const handleAddToGrocery = (meal: Meal) => {
         const newItems: GroceryItem[] = meal.ingredients.map((ingredient, index) => ({
-            id: `${meal.id}-${index}`,
+            id: `${meal.id}-${index}-${Date.now()}`,
             name: ingredient,
             category: 'Produce',
             quantity: 1,
@@ -124,7 +165,7 @@ const NutritionPlans = () => {
         }))
         setGroceryItems(prev => [...prev, ...newItems])
         addToGroceryList(meal.ingredients)
-        toast.success('Added to grocery list!')
+        toast.success('Added to grocery list! 🛒')
     }
 
     const toggleGroceryItem = (itemId: string) => {
@@ -135,39 +176,30 @@ const NutritionPlans = () => {
         )
     }
 
-    // Add this function to handle real meal plan generation
-    const handleGenerateMealPlan = async () => {
-        try {
-            setIsLoading(true)
-            const response = await nutritionApi.generatePlan({
-                calorieTarget: 2000,
-                dietType: user?.diet_preference || 'vegetarian',
-                allergies: user?.allergies?.split(',') || [],
-                durationDays: 7
-            })
-
-            if (response.data.success) {
-                toast.success('Meal plan generated successfully!')
-                fetchPlans() // Refresh the list
-            }
-        } catch (error) {
-            toast.error('Failed to generate meal plan')
-            console.error(error)
-        } finally {
-            setIsLoading(false)
-        }
+    const clearGroceryList = () => {
+        setGroceryItems([])
+        toast.success('Grocery list cleared')
     }
 
-    if (isLoading) {
+    if (storeLoading || generating) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
-                <LoadingSpinner size="lg" />
+                <div className="text-center">
+                    <LoadingSpinner size="lg" />
+                    {generating && (
+                        <p className="mt-4 text-gray-600">Creating your personalized meal plan...</p>
+                    )}
+                </div>
             </div>
         )
     }
 
-    const today = new Date().getDay()
+    const today = new Date().getDay() || 7 // Convert Sunday (0) to 7
+    console.log('Current Plan:', currentPlan)
+    console.log('Daily Plans:', currentPlan?.dailyPlans)
     const todayPlan = currentPlan?.dailyPlans?.find(d => d.day === today)
+    console.log('Today Plan:', todayPlan)
+    console.log('Today number:', today)
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
@@ -175,20 +207,133 @@ const NutritionPlans = () => {
             <Navbar />
 
             <main className="container mx-auto px-4 py-8">
-                {/* Header */}
+                {/* Header with Generate Button */}
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mb-8"
+                    className="mb-8 flex justify-between items-center"
                 >
-                    <h1 className="text-4xl font-bold text-gray-800 flex items-center gap-3">
-                        <Utensils className="w-8 h-8 text-green-500" />
-                        Nutrition Plans
-                    </h1>
-                    <p className="text-gray-600 mt-2">
-                        Personalized meal plans tailored to your dietary preferences and goals
-                    </p>
+                    <div>
+                        <h1 className="text-4xl font-bold text-gray-800 flex items-center gap-3">
+                            <Utensils className="w-8 h-8 text-green-500" />
+                            Nutrition Plans
+                        </h1>
+                        <p className="text-gray-600 mt-2">
+                            Personalized meal plans tailored to your dietary preferences and goals
+                        </p>
+                    </div>
+                    <button
+                        onClick={handleGeneratePlan}
+                        className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-blue-600 transition-all flex items-center gap-2 shadow-lg"
+                    >
+                        <Sparkles className="w-5 h-5" />
+                        Generate New Plan
+                    </button>
                 </motion.div>
+
+                {/* Preferences Modal */}
+                <AnimatePresence>
+                    {showPreferences && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                            onClick={() => setShowPreferences(false)}
+                        >
+                            <motion.div
+                                initial={{ scale: 0.9, y: 20 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.9, y: 20 }}
+                                className="bg-white rounded-2xl max-w-md w-full p-6"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <h2 className="text-2xl font-bold text-gray-800 mb-4">Meal Plan Preferences</h2>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Daily Calorie Target
+                                        </label>
+                                        <input
+                                            type="range"
+                                            min="1500"
+                                            max="3500"
+                                            step="50"
+                                            value={preferences.calorieTarget}
+                                            onChange={(e) => setPreferences({ ...preferences, calorieTarget: parseInt(e.target.value) })}
+                                            className="w-full"
+                                        />
+                                        <div className="text-center text-sm text-gray-600 mt-1">
+                                            {preferences.calorieTarget} calories
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Diet Type
+                                        </label>
+                                        <select
+                                            value={preferences.dietType}
+                                            onChange={(e) => setPreferences({ ...preferences, dietType: e.target.value })}
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                        >
+                                            <option value="vegetarian">Vegetarian</option>
+                                            <option value="vegan">Vegan</option>
+                                            <option value="non_vegetarian">Non-Vegetarian</option>
+                                            <option value="keto">Keto</option>
+                                            <option value="paleo">Paleo</option>
+                                            <option value="mediterranean">Mediterranean</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Allergies / Restrictions
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={preferences.allergies}
+                                            onChange={(e) => setPreferences({ ...preferences, allergies: e.target.value })}
+                                            placeholder="e.g., peanuts, dairy, gluten (comma separated)"
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Meals per Day
+                                        </label>
+                                        <select
+                                            value={preferences.mealsPerDay}
+                                            onChange={(e) => setPreferences({ ...preferences, mealsPerDay: parseInt(e.target.value) })}
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                        >
+                                            <option value="3">3 meals (breakfast, lunch, dinner)</option>
+                                            <option value="4">4 meals (+ snack)</option>
+                                            <option value="5">5 meals (+ 2 snacks)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 mt-6">
+                                    <button
+                                        onClick={() => setShowPreferences(false)}
+                                        className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleGenerateWithPreferences}
+                                        className="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
+                                    >
+                                        Generate Plan
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Tabs */}
                 <div className="flex space-x-4 mb-6">
@@ -215,16 +360,8 @@ const NutritionPlans = () => {
                         <Utensils className="w-16 h-16 text-green-300 mx-auto mb-4" />
                         <h2 className="text-2xl font-bold text-gray-800 mb-2">No Active Meal Plan</h2>
                         <p className="text-gray-600 mb-6">
-                            Let's create a personalized nutrition plan based on your dietary needs
+                            Click the "Generate New Plan" button above to create your personalized meal plan
                         </p>
-                        <button
-                            onClick={handleGeneratePlan}
-                            disabled={isLoading}
-                            className="bg-green-500 text-white px-8 py-3 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 mx-auto"
-                        >
-                            <Sparkles className="w-5 h-5" />
-                            {isLoading ? 'Generating...' : 'Generate Meal Plan'}
-                        </button>
                     </motion.div>
                 ) : (
                     <>
@@ -396,7 +533,7 @@ const NutritionPlans = () => {
                                         Grocery List
                                     </h2>
                                     <button
-                                        onClick={() => setGroceryItems([])}
+                                        onClick={clearGroceryList}
                                         className="text-gray-500 hover:text-gray-700 text-sm"
                                     >
                                         Clear All

@@ -109,10 +109,13 @@ class YouTubeService:
             enriched_videos.append(video_info)
         
         return enriched_videos
-    
+
     async def _get_video_details(self, video_id: str) -> Dict[str, Any]:
         """Get additional details for a specific video"""
         try:
+            if not self.api_key or self.api_key == 'your-youtube-api-key':
+                return {}
+
             async with httpx.AsyncClient() as client:
                 response = await client.get(
                     f"{self.base_url}/videos",
@@ -120,9 +123,10 @@ class YouTubeService:
                         "part": "contentDetails,statistics",
                         "id": video_id,
                         "key": self.api_key
-                    }
+                    },
+                    timeout=10.0
                 )
-                
+
                 if response.status_code == 200:
                     data = response.json()
                     items = data.get("items", [])
@@ -133,9 +137,11 @@ class YouTubeService:
                             "view_count": int(item["statistics"].get("viewCount", 0)),
                             "like_count": int(item["statistics"].get("likeCount", 0))
                         }
+                else:
+                    logger.warning(f"YouTube API returned {response.status_code}")
         except Exception as e:
-            logger.error(f"Error fetching video details: {e}")
-        
+            logger.debug(f"Error fetching video details (non-critical): {e}")
+
         return {}
     
     def _get_fallback_videos(self, exercise_name: str) -> List[Dict[str, Any]]:

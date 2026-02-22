@@ -49,26 +49,40 @@ class ArogyaMitraAgent:
                 response = self.groq_client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
                     messages=[
-                        {"role": "system", "content": "You are AROMI, an expert fitness and wellness AI coach. Generate detailed, personalized workout plans based on user data. Return the response in JSON format with weekly_schedule array containing days with exercises."},
+                        {"role": "system", "content": "You are AROMI, an expert fitness and wellness AI coach. Generate detailed, personalized workout plans based on user data. Return ONLY valid JSON without any additional text, markdown, or explanation."},
                         {"role": "user", "content": prompt}
                     ],
                     temperature=0.7,
                     max_tokens=2000,
                 )
                 
+                # Get the response content
+                content = response.choices[0].message.content
+                
+                # Clean the response - remove markdown code blocks if present
+                content = content.strip()
+                if content.startswith('```json'):
+                    content = content[7:]
+                if content.startswith('```'):
+                    content = content[3:]
+                if content.endswith('```'):
+                    content = content[:-3]
+                content = content.strip()
+                
                 # Parse JSON response
                 try:
-                    plan_data = json.loads(response.choices[0].message.content)
-                except:
-                    # If not JSON, extract JSON from text
-                    json_match = re.search(r'\{.*\}', response.choices[0].message.content, re.DOTALL)
+                    plan_data = json.loads(content)
+                    logger.info(f"AI generated workout plan for user {user.id}")
+                    return plan_data
+                except json.JSONDecodeError as e:
+                    logger.error(f"JSON decode error: {e}. Content: {content[:200]}")
+                    # Try to extract JSON from text
+                    json_match = re.search(r'\{.*\}', content, re.DOTALL)
                     if json_match:
-                        plan_data = json.loads(json_match.group())
+                        return json.loads(json_match.group())
                     else:
-                        plan_data = self._generate_template_workout(user, preferences)
-                
-                logger.info(f"AI generated workout plan for user {user.id}")
-                return plan_data
+                        # Return a structured default plan
+                        return self._generate_template_workout(user, preferences)
             else:
                 logger.error("Groq client not initialized or API key missing")
                 return self._generate_template_workout(user, preferences)

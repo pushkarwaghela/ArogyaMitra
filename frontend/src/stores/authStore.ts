@@ -2,18 +2,60 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { authApi } from '../services/api'
 
-export const useAuthStore = create(
+interface User {
+    id: number
+    username: string
+    email: string
+    full_name: string
+    role?: 'user' | 'admin'
+    is_active?: boolean
+    fitness_level?: string
+    fitness_goal?: string
+    workout_preference?: string
+    diet_preference?: string
+    streak_points?: number
+    total_workouts?: number
+    charity_donations?: number
+    phone?: string
+    age?: number
+    height?: number
+    weight?: number
+    gender?: string
+    bio?: string
+    profile_photo_url?: string
+    allergies?: string
+    medical_conditions?: string
+    injuries?: string
+    medications?: string
+}
+
+interface AuthState {
+    user: User | null
+    token: string | null
+    isAuthenticated: boolean
+    isLoading: boolean
+    isHydrated: boolean
+    error: string | null
+    login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>
+    register: (userData: any) => Promise<{ success: boolean; error?: string }>
+    logout: () => void
+    checkAuth: () => Promise<boolean>
+    updateUser: (userData: Partial<User>) => void
+    clearError: () => void
+    setHydrated: () => void
+}
+
+export const useAuthStore = create<AuthState>()(
     persist(
         (set, get) => ({
             user: null,
             token: null,
             isAuthenticated: false,
-            isLoading: true, // Start with true to prevent flash
-            isHydrated: false, // Add this to track hydration
+            isLoading: true,
+            isHydrated: false,
             error: null,
 
-            // Login action
-            login: async (username, password) => {
+            login: async (username: string, password: string) => {
                 set({ isLoading: true, error: null })
                 try {
                     const response = await authApi.login(username, password)
@@ -29,7 +71,7 @@ export const useAuthStore = create(
                     })
 
                     return { success: true }
-                } catch (error) {
+                } catch (error: any) {
                     console.error('Login error:', error)
                     set({
                         error: error.response?.data?.detail || 'Login failed',
@@ -39,14 +81,13 @@ export const useAuthStore = create(
                 }
             },
 
-            // Register action
-            register: async (userData) => {
+            register: async (userData: any) => {
                 set({ isLoading: true, error: null })
                 try {
-                    await authApi.register(userData)
+                    const response = await authApi.register(userData)
                     set({ isLoading: false })
                     return { success: true }
-                } catch (error) {
+                } catch (error: any) {
                     set({
                         error: error.response?.data?.detail || 'Registration failed',
                         isLoading: false
@@ -55,7 +96,6 @@ export const useAuthStore = create(
                 }
             },
 
-            // Logout action
             logout: () => {
                 localStorage.removeItem('token')
                 set({
@@ -66,7 +106,6 @@ export const useAuthStore = create(
                 })
             },
 
-            // Check auth action
             checkAuth: async () => {
                 const token = localStorage.getItem('token')
                 if (!token) {
@@ -97,30 +136,21 @@ export const useAuthStore = create(
                 }
             },
 
-            // Update user data
-            updateUser: (userData) => {
+            updateUser: (userData: Partial<User>) => {
                 const currentUser = get().user
                 if (currentUser) {
                     set({ user: { ...currentUser, ...userData } })
                 }
             },
 
-            // Clear error
             clearError: () => set({ error: null }),
 
-            // Set hydration complete (called by persist)
             setHydrated: () => set({ isHydrated: true })
         }),
         {
             name: 'auth-storage',
             storage: localStorage,
-            partialize: (state) => ({
-                user: state.user,
-                token: state.token,
-                isAuthenticated: state.isAuthenticated
-            }),
             onRehydrateStorage: () => (state) => {
-                // This runs after storage is hydrated
                 if (state) {
                     state.setHydrated()
                 }
