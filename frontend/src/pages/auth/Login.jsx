@@ -12,28 +12,41 @@ const Login = () => {
         username: '',
         password: ''
     })
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     const handleSubmit = async (e) => {
         e.preventDefault()
+
+        // Prevent double submission
+        if (isSubmitting) return
 
         if (!formData.username || !formData.password) {
             toast.error('Please enter both username and password')
             return
         }
 
-        const result = await login(formData.username, formData.password)
+        setIsSubmitting(true)
 
-        if (result.success) {
-            toast.success('Login successful!')
-            navigate('/dashboard')
-        } else {
-            if (result.error === 'Invalid credentials') {
-                toast.error('Invalid username or password')
-            } else if (result.error?.includes('not found')) {
-                toast.error('User not found. Please register first.')
+        try {
+            const result = await login(formData.username, formData.password)
+
+            if (result.success) {
+                toast.success('Login successful!')
+                navigate('/dashboard')
             } else {
-                toast.error(result.error || 'Login failed')
+                if (result.error === 'Invalid credentials') {
+                    toast.error('Invalid username or password')
+                } else if (result.error?.includes('not found')) {
+                    toast.error('User not found. Please register first.')
+                } else {
+                    toast.error(result.error || 'Login failed')
+                }
+                setIsSubmitting(false) // Only reset on error, success redirects away
             }
+        } catch (error) {
+            console.error('Login error:', error)
+            toast.error('Login failed')
+            setIsSubmitting(false)
         }
     }
 
@@ -58,6 +71,7 @@ const Login = () => {
                                 className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                                 placeholder="Enter your username"
                                 required
+                                disabled={isSubmitting}
                             />
                         </div>
                     </div>
@@ -73,16 +87,17 @@ const Login = () => {
                                 className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                                 placeholder="Enter your password"
                                 required
+                                disabled={isSubmitting}
                             />
                         </div>
                     </div>
 
                     <button
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isLoading || isSubmitting}
                         className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
                     >
-                        {isLoading ? 'Logging in...' : 'Login'}
+                        {isLoading || isSubmitting ? 'Logging in...' : 'Login'}
                     </button>
                 </form>
 
