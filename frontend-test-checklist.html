@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArogyaMitra - Frontend Test Checklist</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        .test-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .test-item:last-child {
+            border-bottom: none;
+        }
+        .test-checkbox {
+            margin-right: 15px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        .test-label {
+            flex: 1;
+            font-size: 16px;
+        }
+        .test-expected {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-left: 20px;
+        }
+        .test-status {
+            width: 100px;
+            text-align: center;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status-pending {
+            background: #f39c12;
+            color: white;
+        }
+        .status-pass {
+            background: #27ae60;
+            color: white;
+        }
+        .status-fail {
+            background: #c0392b;
+            color: white;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        .save-btn {
+            background: #27ae60;
+            color: white;
+        }
+        .reset-btn {
+            background: #e74c3c;
+            color: white;
+        }
+        .summary {
+            background: #34495e;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 ArogyaMitra - Complete Frontend Test Checklist</h1>
+
+    <div class="button-container">
+        <button class="save-btn" onclick="saveProgress()">💾 Save Progress</button>
+        <button class="reset-btn" onclick="resetProgress()">🔄 Reset All</button>
+    </div>
+
+    <div id="test-container"></div>
+
+    <div class="summary" id="summary">
+        Progress: 0/0 tests completed (0%)
+    </div>
+
+    <script>
+        const testSections = [
+            {
+                title: "1. 🔐 Authentication Pages",
+                tests: [
+                    { id: "auth1", label: "Login page loads at /login", expected: "Should see login form with username/password fields" },
+                    { id: "auth2", label: "Register page loads at /register", expected: "Should see multi-step registration form" },
+                    { id: "auth3", label: "Registration Step 1 - Account Info", expected: "Email, username, password fields work" },
+                    { id: "auth4", label: "Registration Step 2 - Personal Info", expected: "Age, gender, height, weight inputs work" },
+                    { id: "auth5", label: "Registration Step 3 - Fitness Goals", expected: "Dropdown selections work" },
+                    { id: "auth6", label: "Registration Step 4 - Health Info", expected: "Text areas for medical info work" },
+                    { id: "auth7", label: "Login with test credentials", expected: "Should redirect to dashboard" },
+                    { id: "auth8", label: "Logout button works", expected: "Redirects to login, clears token" }
+                ]
+            },
+            {
+                title: "2. 🏠 Dashboard",
+                tests: [
+                    { id: "dash1", label: "Personalized greeting", expected: "Shows 'Good morning/afternoon/evening, [Username]!'" },
+                    { id: "dash2", label: "Stats cards visible", expected: "Shows Streak, Calories, Workouts, Weight" },
+                    { id: "dash3", label: "Active workout plan card", expected: "Shows current plan or 'No active plan'" },
+                    { id: "dash4", label: "Upcoming workouts", expected: "Shows next 3 workouts" },
+                    { id: "dash5", label: "AROMI coach card", expected: "Links to /aromi" },
+                    { id: "dash6", label: "Health assessment card", expected: "Links to /health-assessment" },
+                    { id: "dash7", label: "Charity impact card", expected: "Shows meals, trees, vaccines" },
+                    { id: "dash8", label: "Navigation links work", expected: "All navbar links work" }
+                ]
+            },
+            {
+                title: "3. 💪 Workouts Page",
+                tests: [
+                    { id: "work1", label: "Page loads at /workouts", expected: "Shows workout plans" },
+                    { id: "work2", label: "Generate New Plan button", expected: "Opens preferences modal" },
+                    { id: "work3", label: "Preferences modal - Fitness Level", expected: "Dropdown works" },
+                    { id: "work4", label: "Preferences modal - Fitness Goal", expected: "Dropdown works" },
+                    { id: "work5", label: "Preferences modal - Days per week", expected: "Slider works" },
+                    { id: "work6", label: "Generate button in modal", expected: "Creates new plan" },
+                    { id: "work7", label: "Plan overview visible", expected: "Shows title, description, stats" },
+                    { id: "work8", label: "Weekly schedule grid", expected: "Shows 7 days" },
+                    { id: "work9", label: "Day card shows exercises", expected: "Lists exercises with sets/reps" },
+                    { id: "work10", label: "View Workout button", expected: "Opens day details modal" },
+                    { id: "work11", label: "Day details modal", expected: "Shows all exercises" },
+                    { id: "work12", label: "Start button on exercise", expected: "Opens Exercise Player" }
+                ]
+            },
+            {
+                title: "4. 🎥 Exercise Player",
+                tests: [
+                    { id: "ex1", label: "Exercise player opens", expected: "Modal appears with video and tracker" },
+                    { id: "ex2", label: "YouTube video loads", expected: "Video plays (may need interaction)" },
+                    { id: "ex3", label: "Mute/unmute button works", expected: "Toggles volume" },
+                    { id: "ex4", label: "Start/Pause button works", expected: "Controls timer" },
+                    { id: "ex5", label: "Rep counter increments", expected: "Clicking 'Rep Complete' counts reps" },
+                    { id: "ex6", label: "Progress bar updates", expected: "Fills as sets complete" },
+                    { id: "ex7", label: "Rest timer works", expected: "Counts down between sets" },
+                    { id: "ex8", label: "Skip rest button works", expected: "Ends rest period early" },
+                    { id: "ex9", label: "Exercise completion", expected: "Marks exercise as complete" },
+                    { id: "ex10", label: "Close button works", expected: "Returns to workouts" }
+                ]
+            },
+            {
+                title: "5. 🍽️ Nutrition Page",
+                tests: [
+                    { id: "nut1", label: "Page loads at /nutrition", expected: "Shows meal plans" },
+                    { id: "nut2", label: "Generate New Plan button", expected: "Opens preferences modal" },
+                    { id: "nut3", label: "Calorie target slider", expected: "Adjusts value" },
+                    { id: "nut4", label: "Diet type dropdown", expected: "Selection works" },
+                    { id: "nut5", label: "Allergies input", expected: "Can enter allergies" },
+                    { id: "nut6", label: "Meals per day dropdown", expected: "Selection works" },
+                    { id: "nut7", label: "Generate button", expected: "Creates new meal plan" },
+                    { id: "nut8", label: "Today's meals view", expected: "Shows breakfast, lunch, dinner" },
+                    { id: "nut9", label: "Macro breakdown", expected: "Shows protein, carbs, fats" },
+                    { id: "nut10", label: "Recipe button", expected: "Opens recipe modal with ingredients" },
+                    { id: "nut11", label: "Add to grocery button", expected: "Adds ingredients to list" },
+                    { id: "nut12", label: "Log meal button", expected: "Marks meal as logged" },
+                    { id: "nut13", label: "Weekly view tab", expected: "Shows all 7 days" },
+                    { id: "nut14", label: "Grocery list tab", expected: "Shows all added ingredients" },
+                    { id: "nut15", label: "Checkbox on grocery items", expected: "Toggles checked state" }
+                ]
+            },
+            {
+                title: "6. 🏥 Health Assessment",
+                tests: [
+                    { id: "health1", label: "Page loads at /health-assessment", expected: "Shows body metrics form" },
+                    { id: "health2", label: "Body metrics inputs", expected: "Age, gender, height, weight work" },
+                    { id: "health3", label: "BMI auto-calculates", expected: "Updates when height/weight change" },
+                    { id: "health4", label: "Progress bar", expected: "Shows completion percentage" },
+                    { id: "health5", label: "Medical history questions", expected: "Multi-select works" },
+                    { id: "health6", label: "Lifestyle questions", expected: "Dropdown selections work" },
+                    { id: "health7", label: "Fitness questions", expected: "All options work" },
+                    { id: "health8", label: "Dietary questions", expected: "All options work" },
+                    { id: "health9", label: "Next/Previous buttons", expected: "Navigate through questions" },
+                    { id: "health10", label: "Submit button", expected: "Saves assessment, redirects to dashboard" }
+                ]
+            },
+            {
+                title: "7. 📊 Progress Tracking",
+                tests: [
+                    { id: "prog1", label: "Page loads at /progress", expected: "Shows stats and charts" },
+                    { id: "prog2", label: "Stats cards", expected: "Shows streak, workouts, calories, weight" },
+                    { id: "prog3", label: "Tabs", expected: "Overview, Workouts, Nutrition, Body, Achievements" },
+                    { id: "prog4", label: "Period selector", expected: "Week/Month/3 Months/Year" },
+                    { id: "prog5", label: "Weight chart", expected: "Line chart with data" },
+                    { id: "prog6", label: "Activity chart", expected: "Bar chart with workouts" },
+                    { id: "prog7", label: "Workouts tab", expected: "Shows workout history" },
+                    { id: "prog8", label: "Nutrition tab", expected: "Shows water, calories, sleep stats" },
+                    { id: "prog9", label: "Body tab", expected: "Shows body measurements" },
+                    { id: "prog10", label: "Achievements tab", expected: "Shows earned badges" },
+                    { id: "prog11", label: "Next milestones", expected: "Progress bars for goals" }
+                ]
+            },
+            {
+                title: "8. 🤖 AROMI Coach",
+                tests: [
+                    { id: "arom1", label: "Page loads at /aromi", expected: "Shows chat interface" },
+                    { id: "arom2", label: "Quick questions buttons", expected: "4 buttons with suggestions" },
+                    { id: "arom3", label: "Click quick question", expected: "Populates input field" },
+                    { id: "arom4", label: "Type message", expected: "Input field works" },
+                    { id: "arom5", label: "Send button", expected: "Sends message" },
+                    { id: "arom6", label: "AI response appears", expected: "Bot replies within few seconds" },
+                    { id: "arom7", label: "Typing indicator", expected: "Shows while AI is thinking" },
+                    { id: "arom8", label: "Suggestion buttons", expected: "Clickable suggestions appear" },
+                    { id: "arom9", label: "Voice input button", expected: "Microphone toggle works" },
+                    { id: "arom10", label: "Travel adjustment test", expected: "Type 'I am traveling' - gets travel tips" },
+                    { id: "arom11", label: "Injury advice test", expected: "Type 'My knee hurts' - gets modifications" },
+                    { id: "arom12", label: "Motivation test", expected: "Type 'I need motivation' - gets encouragement" }
+                ]
+            },
+            {
+                title: "9. 👤 Profile Page",
+                tests: [
+                    { id: "prof1", label: "Page loads at /profile", expected: "Shows user information" },
+                    { id: "prof2", label: "User details displayed", expected: "Name, email, fitness details" },
+                    { id: "prof3", label: "Edit button", expected: "Toggles edit mode" },
+                    { id: "prof4", label: "Edit mode fields", expected: "All fields editable" },
+                    { id: "prof5", label: "Save button", expected: "Updates profile" },
+                    { id: "prof6", label: "Cancel button", expected: "Discards changes" }
+                ]
+            },
+            {
+                title: "10. 📱 Responsive Design",
+                tests: [
+                    { id: "resp1", label: "Desktop view (>1024px)", expected: "All layouts correct" },
+                    { id: "resp2", label: "Tablet view (768px-1024px)", expected: "Grid adjusts to 2 columns" },
+                    { id: "resp3", label: "Mobile view (<768px)", expected: "Hamburger menu appears" },
+                    { id: "resp4", label: "Hamburger menu click", expected: "Opens mobile navigation" },
+                    { id: "resp5", label: "Mobile menu links", expected: "All navigation links work" }
+                ]
+            }
+        ];
+
+        function renderTests() {
+            const container = document.getElementById('test-container');
+            let html = '';
+            let totalTests = 0;
+            
+            testSections.forEach(section => {
+                html += `<div class="test-section">`;
+                html += `<h2>${section.title}</h2>`;
+                
+                section.tests.forEach(test => {
+                    totalTests++;
+                    const savedState = localStorage.getItem(`test_${test.id}`);
+                    const checked = savedState === 'true' ? 'checked' : '';
+                    
+                    html += `
+                        <div class="test-item" id="item-${test.id}">
+                            <input type="checkbox" class="test-checkbox" id="${test.id}" ${checked} onchange="updateTest('${test.id}')">
+                            <div class="test-label">
+                                <strong>${test.label}</strong>
+                                <div class="test-expected">Expected: ${test.expected}</div>
+                            </div>
+                            <div class="test-status ${checked ? 'status-pass' : 'status-pending'}" id="status-${test.id}">
+                                ${checked ? '✅ PASS' : '⏳ PENDING'}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `</div>`;
+            });
+            
+            container.innerHTML = html;
+            updateSummary();
+        }
+
+        function updateTest(id) {
+            const checkbox = document.getElementById(id);
+            const status = document.getElementById(`status-${id}`);
+            const checked = checkbox.checked;
+            
+            localStorage.setItem(`test_${id}`, checked);
+            
+            if (checked) {
+                status.className = 'test-status status-pass';
+                status.textContent = '✅ PASS';
+            } else {
+                status.className = 'test-status status-pending';
+                status.textContent = '⏳ PENDING';
+            }
+            
+            updateSummary();
+        }
+
+        function updateSummary() {
+            let completed = 0;
+            let total = 0;
+            
+            testSections.forEach(section => {
+                section.tests.forEach(test => {
+                    total++;
+                    if (localStorage.getItem(`test_${test.id}`) === 'true') {
+                        completed++;
+                    }
+                });
+            });
+            
+            const percentage = Math.round((completed / total) * 100);
+            document.getElementById('summary').innerHTML = 
+                `📊 Progress: ${completed}/${total} tests completed (${percentage}%)`;
+        }
+
+        function saveProgress() {
+            alert('Progress saved to browser!');
+        }
+
+        function resetProgress() {
+            if (confirm('Are you sure you want to reset all test progress?')) {
+                testSections.forEach(section => {
+                    section.tests.forEach(test => {
+                        localStorage.removeItem(`test_${test.id}`);
+                    });
+                });
+                renderTests();
+            }
+        }
+
+        window.onload = renderTests;
+    </script>
+</body>
+</html>
