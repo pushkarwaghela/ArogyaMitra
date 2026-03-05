@@ -71,5 +71,5 @@ ArogyaMitra is an AI-powered fitness and wellness platform that delivers persona
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/ArogyaMitra.git
+git clone https://github.com/pushkarwaghela/ArogyaMitra.git
 cd ArogyaMitra
